@@ -1,0 +1,528 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* ── Base ─────────────────────────────────────────── */
+.section-card{border-radius:14px!important;border:1.5px solid rgba(79,70,229,.15)!important;box-shadow:0 2px 12px rgba(0,0,0,.06)!important;transition:border-color .2s,box-shadow .2s;}
+.section-card:hover{border-color:rgba(79,70,229,.35)!important;box-shadow:0 8px 24px rgba(79,70,229,.12)!important;}
+.kpi-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:1.2rem;}
+.kpi-icon.blue  {background:rgba(59,130,246,.12);color:#3b82f6;}
+.kpi-icon.green {background:rgba(16,185,129,.12);color:#10b981;}
+.kpi-icon.purple{background:rgba(139,92,246,.12);color:#8b5cf6;}
+.kpi-value{font-size:1.5rem;font-weight:800;line-height:1.1;color:#0f172a;}
+.kpi-label{font-size:.73rem;color:#64748b;font-weight:500;text-transform:uppercase;letter-spacing:.04em;}
+.id-pill{font-family:monospace;background:#f1f5f9;color:#475569;border-radius:5px;padding:1px 7px;font-size:.78rem;}
+.stat-box{background:#f8fafc;border-radius:10px;padding:12px 14px;text-align:center;border:1px solid #e2e8f0;}
+.stat-box .val{font-size:1.3rem;font-weight:800;}
+.stat-box .lbl{font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
+.gender-m{background:#dbeafe;color:#1d4ed8;}
+.gender-f{background:#fce7f3;color:#be185d;}
+.gender-o{background:#e0e7ff;color:#4338ca;}
+/* ── Header ───────────────────────────────────────── */
+.page-header{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:20px;padding:24px 28px;color:white;margin-bottom:24px;position:relative;overflow:hidden;}
+.page-header::after{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;background:rgba(79,70,229,.15);border-radius:50%;pointer-events:none;}
+.page-header::before{content:'';position:absolute;right:60px;bottom:-50px;width:120px;height:120px;background:rgba(99,102,241,.12);border-radius:50%;pointer-events:none;}
+.page-header h2{color:white!important;font-weight:800;margin-bottom:4px;}
+.page-header p.sub{color:#94a3b8!important;font-size:.875rem;margin:0;}
+.header-action{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:12px;padding:10px 20px;color:white;font-weight:600;font-size:.85rem;transition:all .3s;cursor:pointer;display:inline-flex;align-items:center;gap:8px;backdrop-filter:blur(10px);position:relative;z-index:10;}
+.header-action:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5);transform:translateY(-2px);color:white;text-decoration:none;}
+/* ── Detail ───────────────────────────────────────── */
+.detail-section-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:12px;padding-bottom:6px;border-bottom:1.5px solid #e2e8f0;}
+.info-row{display:flex;flex-direction:column;gap:2px;padding:10px 14px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;}
+.info-row .lbl{font-size:.7rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.info-row .val{font-size:.93rem;font-weight:600;color:#0f172a;}
+.order-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:8px;}
+.order-row:hover{border-color:#c7d2fe;background:#eef2ff;}
+.modal-header-grad{background:linear-gradient(135deg,#1e293b,#4f46e5);color:white;}
+.modal-header-grad .btn-close{filter:invert(1);}
+.so-badge-draft    {background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
+.so-badge-confirmed{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;}
+.so-badge-shipped  {background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;}
+.so-badge-cancelled{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;}
+.so-status{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:700;}
+.form-label{font-size:.82rem;font-weight:600;color:#374151;margin-bottom:4px;}
+</style>
+
+<!-- Header -->
+<div class="page-header">
+  <div class="d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="mb-1"><i class="bi bi-people-fill me-2"></i>Customers</h2>
+      <p class="sub mb-0">Manage customer profiles and view purchase behaviour</p>
+    </div>
+    <button class="header-action" id="btn-new-customer" style="display:none" onclick="openCreateModal()">
+      <i class="bi bi-person-plus-fill"></i> New Customer
+    </button>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon blue"><i class="bi bi-people"></i></div>
+        <div><div class="kpi-label">Total Customers</div><div class="kpi-value" id="kpi-total">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon green"><i class="bi bi-cart4"></i></div>
+        <div><div class="kpi-label">Avg Purchase Freq</div><div class="kpi-value" id="kpi-freq">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon purple"><i class="bi bi-cash-stack"></i></div>
+        <div><div class="kpi-label">Avg Spend</div><div class="kpi-value" id="kpi-spend">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card section-card p-3 mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <div class="input-group">
+        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+        <input type="text" id="c-search" class="form-control border-start-0"
+               placeholder="Search by ID, name, email, income…"
+               onkeyup="if(event.key==='Enter') loadData(1)">
+      </div>
+    </div>
+    <div class="col-md-2">
+      <select id="c-gender" class="form-select" onchange="loadData(1)">
+        <option value="">All Genders</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select id="c-income" class="form-select" onchange="loadData(1)">
+        <option value="">All Income Brackets</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+  <button
+    type="button"
+    class="btn fw-semibold  d-flex align-items-center justify-content-center gap-2"
+    onclick="loadData(1)"
+    style="background:#5b5ef4;color:#fff;border:none;border-radius:50px;height:45px;font-size:0.97rem;box-shadow:0 2px 8px rgba(91,94,244,0.18);">
+    
+    <i class="bi bi-funnel"></i>
+    <span>Filter</span>
+
+  </button>
+</div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card section-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" style="font-size:.87rem;">
+      <thead class="bg-light">
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Customer ID</th>
+          <th>Income Bracket</th>
+          <th class="text-center">Purchase Freq</th>
+          <th class="text-end">Avg Spend</th>
+          <th class="text-end pe-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="c-table">
+        <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+    <small class="text-muted" id="c-count"></small>
+    <ul class="pagination pagination-sm mb-0" id="c-pagination"></ul>
+  </div>
+</div>
+
+
+<!-- ═══ DETAIL MODAL ═══ -->
+<div class="modal fade" id="custModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header modal-header-grad">
+        <h5 class="mb-0 fw-bold" id="cust-modal-title"><i class="bi bi-person-circle me-2"></i>Customer Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="cust-detail-body">
+        <div class="text-center py-5"><span class="spinner-border text-primary"></span></div>
+      </div>
+      <div class="modal-footer border-0" id="cust-modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ CREATE / EDIT MODAL ═══ -->
+<div class="modal fade" id="formModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header modal-header-grad">
+        <h5 class="mb-0 fw-bold" id="form-modal-title"><i class="bi bi-person-plus-fill me-2"></i>New Customer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="f-name" class="form-control form-control-sm" placeholder="e.g. Priya Sharma">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input type="email" id="f-email" class="form-control form-control-sm" placeholder="e.g. priya@example.com">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Age</label>
+            <input type="number" id="f-age" class="form-control form-control-sm" min="1" max="120" placeholder="e.g. 34">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Gender</label>
+            <select id="f-gender" class="form-select form-select-sm">
+              <option value="">— Select —</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Income Bracket</label>
+            <select id="f-income" class="form-select form-select-sm">
+              <option value="">— Select —</option>
+              <option value="1-5 LPA">1-5 LPA</option>
+              <option value="6-10 LPA">6-10 LPA</option>
+              <option value="11-15 LPA">11-15 LPA</option>
+              <option value="16-20 LPA">16-20 LPA</option>
+              <option value="20+ LPA">20+ LPA</option>
+            </select>
+          </div>
+        </div>
+        <div id="form-error" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary btn-sm px-4" id="btn-save" onclick="saveCustomer()">
+          <i class="bi bi-check-lg me-1"></i>Create Customer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ DELETE CONFIRM MODAL ═══ -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0" style="background:#fee2e2;">
+        <h6 class="mb-0 fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Customer</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-3">
+        <p class="mb-1">Are you sure you want to delete <strong id="delete-cid"></strong>?</p>
+        <p class="text-danger small mb-0">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger btn-sm px-4" onclick="confirmDelete()"><i class="bi bi-trash me-1"></i>Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+let currentPage = 1;
+let editingId   = null;
+let deletingId  = null;
+
+// ── BOOT ───────────────────────────────────────────────────────────────────
+function loadPageData() {
+    const role = localStorage.getItem('user_role');
+    if (['Admin','Manager'].includes(role)) {
+        document.getElementById('btn-new-customer').style.display = 'inline-flex';
+    }
+    loadSummary();
+    loadFilters();
+    loadData(1);
+}
+
+// ── SUMMARY ────────────────────────────────────────────────────────────────
+async function loadSummary() {
+    try {
+        const res = await axios.get('/api/customers/summary');
+        const d   = res.data.data;
+        document.getElementById('kpi-total').innerText = d.total_customers.toLocaleString();
+        document.getElementById('kpi-freq').innerText  = d.avg_purchase_freq;
+        document.getElementById('kpi-spend').innerText = '₹' + d.avg_spend.toLocaleString(undefined, {minimumFractionDigits:2});
+    } catch(e) {}
+}
+
+// ── FILTERS ────────────────────────────────────────────────────────────────
+async function loadFilters() {
+    try {
+        const res = await axios.get('/api/customers/filters');
+        const { genders, income_brackets } = res.data.data;
+        const gSel = document.getElementById('c-gender');
+        const iSel = document.getElementById('c-income');
+        genders.forEach(g => gSel.appendChild(new Option(g, g)));
+        income_brackets.forEach(i => iSel.appendChild(new Option(i, i)));
+    } catch(e) {}
+}
+
+// ── TABLE ──────────────────────────────────────────────────────────────────
+async function loadData(page = 1) {
+    currentPage = page;
+    const search = document.getElementById('c-search').value.trim();
+    const gender = document.getElementById('c-gender').value;
+    const income = document.getElementById('c-income').value;
+    const params = new URLSearchParams({ page });
+    if (search) params.set('search', search);
+    if (gender) params.set('gender', gender);
+    if (income) params.set('income', income);
+
+    document.getElementById('c-table').innerHTML =
+        `<tr><td colspan="6" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>`;
+
+    try {
+        const res  = await axios.get(`/api/customers?${params}`);
+        const data = res.data.data;
+        const role = localStorage.getItem('user_role');
+
+        document.getElementById('c-count').innerText =
+            `Showing ${data.items.length} of ${data.total.toLocaleString()} customers`;
+
+        if (!data.items.length) {
+            document.getElementById('c-table').innerHTML =
+                `<tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No customers found.</td></tr>`;
+        } else {
+            document.getElementById('c-table').innerHTML = data.items.map((c, idx) => `
+                <tr>
+                  <td class="text-muted" style="font-size:.8rem">${(page-1)*15+idx+1}</td>
+                  <td><span class="id-pill">${c.customer_id}</span></td>
+                  <td>${c.income_bracket !== '—' ? `<span class="badge bg-light text-dark border">${c.income_bracket}</span>` : '—'}</td>
+                  <td class="text-center">${c.purchase_frequency ?? '—'}</td>
+                  <td class="text-end">₹${(c.average_spend||0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                  <td class="text-end pe-3">
+                    <div class="d-inline-flex gap-1">
+                      <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="viewCustomer('${c.customer_id}')" title="View details"><i class="bi bi-eye"></i></button>
+                      ${['Admin','Manager'].includes(role) ? `<button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="openEditModal('${c.customer_id}')" title="Edit"><i class="bi bi-pencil"></i></button>` : ''}
+                      ${['Admin','Manager'].includes(role) ? `<button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="promptDelete('${c.customer_id}')" title="Delete"><i class="bi bi-trash"></i></button>` : ''}
+                    </div>
+                  </td>
+                </tr>`).join('');
+        }
+        buildPagination(page, data.pages);
+    } catch(e) {
+        document.getElementById('c-table').innerHTML =
+            `<tr><td colspan="6" class="text-center text-danger py-4">Failed to load customers.</td></tr>`;
+    }
+}
+
+function genderBadge(g) {
+    if (!g || g === '—') return `<span class="badge bg-secondary">—</span>`;
+    const gl = g.toLowerCase();
+    if (gl === 'male'   || gl === 'm') return `<span class="badge gender-m">${g}</span>`;
+    if (gl === 'female' || gl === 'f') return `<span class="badge gender-f">${g}</span>`;
+    return `<span class="badge gender-o">${g}</span>`;
+}
+
+// ── VIEW DETAIL ────────────────────────────────────────────────────────────
+async function viewCustomer(customerId) {
+    document.getElementById('cust-modal-title').innerHTML = `<i class="bi bi-person-circle me-2"></i>${customerId}`;
+    document.getElementById('cust-detail-body').innerHTML =
+        `<div class="text-center py-5"><span class="spinner-border text-primary"></span></div>`;
+    document.getElementById('cust-modal-footer').innerHTML =
+        `<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>`;
+    new bootstrap.Modal(document.getElementById('custModal')).show();
+
+    try {
+        const res  = await axios.get(`/api/customers/${customerId}`);
+        const c    = res.data.data;
+        const st   = c.stats || {};
+        const role = localStorage.getItem('user_role');
+
+        // Modal title
+        document.getElementById('cust-modal-title').innerHTML =
+            `<i class="bi bi-person-circle me-2"></i>${c.name ? `<strong>${c.name}</strong><span class="opacity-60 fw-normal small ms-2">${c.customer_id}</span>` : c.customer_id}`;
+
+        // Footer buttons
+        let footer = `<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>`;
+        if (['Admin','Manager'].includes(role))
+            footer += `<button class="btn btn-outline-primary btn-sm ms-2" onclick="openEditModal('${c.customer_id}');bootstrap.Modal.getInstance(document.getElementById('custModal')).hide()"><i class="bi bi-pencil me-1"></i>Edit</button>`;
+        if (['Admin','Manager'].includes(role))
+            footer += `<button class="btn btn-outline-danger btn-sm ms-2" onclick="promptDelete('${c.customer_id}');bootstrap.Modal.getInstance(document.getElementById('custModal')).hide()"><i class="bi bi-trash me-1"></i>Delete</button>`;
+        document.getElementById('cust-modal-footer').innerHTML = footer;
+
+        // ── Profile ────────────────────────────────────────────
+        const profileHtml = `
+          <div class="detail-section-title"><i class="bi bi-person me-1"></i>Profile</div>
+          <div class="row g-2 mb-4">
+            <div class="col-6 col-md-3"><div class="info-row"><div class="lbl">Customer ID</div><div class="val"><span class="id-pill">${c.customer_id}</span></div></div></div>
+            <div class="col-6 col-md-3"><div class="info-row"><div class="lbl">Full Name</div><div class="val">${c.name || '<span class="text-muted fw-normal">—</span>'}</div></div></div>
+            <div class="col-6 col-md-3"><div class="info-row"><div class="lbl">Email</div><div class="val" style="font-size:.83rem;">${c.email ? `<a href="mailto:${c.email}" class="text-primary text-decoration-none">${c.email}</a>` : '<span class="text-muted fw-normal">—</span>'}</div></div></div>
+            <div class="col-6 col-md-3"><div class="info-row"><div class="lbl">Age</div><div class="val">${c.age ?? '—'}</div></div></div>
+            <div class="col-6 col-md-3"><div class="info-row"><div class="lbl">Gender</div><div class="val">${genderBadge(c.gender)}</div></div></div>
+            <div class="col-6 col-md-3"><div class="info-row"><div class="lbl">Income Bracket</div><div class="val">${c.income_bracket !== '—' ? `<span class="badge bg-light text-dark border">${c.income_bracket}</span>` : '—'}</div></div></div>
+            <div class="col-6 col-md-3"><div class="info-row"><div class="lbl">Purchase Freq</div><div class="val">${c.purchase_frequency ?? '—'}</div></div></div>
+            <div class="col-6 col-md-3"><div class="info-row"><div class="lbl">Avg Spend</div><div class="val text-success">₹${(c.average_spend||0).toLocaleString(undefined,{minimumFractionDigits:2})}</div></div></div>
+          </div>`;
+
+        // ── Sales Stats ────────────────────────────────────────
+        const statsHtml = `
+          <div class="detail-section-title"><i class="bi bi-bar-chart me-1"></i>Sales Activity</div>
+          <div class="row g-2 mb-4">
+            <div class="col-6 col-md-2"><div class="stat-box"><div class="lbl">Orders</div><div class="val text-primary">${(st.total_orders||0).toLocaleString()}</div></div></div>
+            <div class="col-6 col-md-2"><div class="stat-box"><div class="lbl">Units Bought</div><div class="val text-success">${(st.total_units||0).toLocaleString()}</div></div></div>
+            <div class="col-6 col-md-2"><div class="stat-box" style="background:#fef2f2;"><div class="lbl" style="color:#dc2626;">Returns</div><div class="val text-danger">${(st.total_returns||0).toLocaleString()}</div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-box"><div class="lbl">Gross Revenue</div><div class="val" style="font-size:1rem;">₹${(st.total_revenue||0).toLocaleString(undefined,{minimumFractionDigits:2})}</div></div></div>
+          </div>`;
+
+        document.getElementById('cust-detail-body').innerHTML = profileHtml + statsHtml;
+
+    } catch(e) {
+        document.getElementById('cust-detail-body').innerHTML =
+            `<div class="text-danger text-center py-3">Failed to load customer detail.</div>`;
+    }
+}
+
+// ── CREATE / EDIT MODALS ───────────────────────────────────────────────────
+function openCreateModal() {
+    editingId = null;
+    document.getElementById('form-modal-title').innerHTML = `<i class="bi bi-person-plus-fill me-2"></i>New Customer`;
+    document.getElementById('btn-save').innerHTML = `<i class="bi bi-check-lg me-1"></i>Create Customer`;
+    clearForm();
+    new bootstrap.Modal(document.getElementById('formModal')).show();
+}
+
+async function openEditModal(customerId) {
+    editingId = customerId;
+    document.getElementById('form-modal-title').innerHTML = `<i class="bi bi-pencil me-2"></i>Edit Customer`;
+    document.getElementById('btn-save').innerHTML = `<i class="bi bi-check-lg me-1"></i>Save Changes`;
+    clearForm();
+    try {
+        const res = await axios.get(`/api/customers/${customerId}`);
+        const c   = res.data.data;
+        document.getElementById('f-name').value   = c.name || '';
+        document.getElementById('f-email').value  = c.email || '';
+        document.getElementById('f-age').value    = c.age || '';
+        document.getElementById('f-gender').value = c.gender !== '—' ? c.gender : '';
+        document.getElementById('f-income').value = c.income_bracket !== '—' ? c.income_bracket : '';
+    } catch(e) {}
+    new bootstrap.Modal(document.getElementById('formModal')).show();
+}
+
+function clearForm() {
+    ['f-name','f-email','f-age'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('f-gender').value = '';
+    document.getElementById('f-income').value = '';
+    document.getElementById('form-error').classList.add('d-none');
+}
+
+async function saveCustomer() {
+    const btn = document.getElementById('btn-save');
+    btn.disabled = true;
+    document.getElementById('form-error').classList.add('d-none');
+
+    const payload = {
+        name:               document.getElementById('f-name').value.trim(),
+        email:              document.getElementById('f-email').value.trim(),
+        age:                parseInt(document.getElementById('f-age').value) || null,
+        gender:             document.getElementById('f-gender').value || null,
+        income_bracket:     document.getElementById('f-income').value || null,
+    };
+
+    try {
+        const res = editingId
+            ? await axios.put(`/api/customers/${editingId}`, payload)
+            : await axios.post('/api/customers', payload);
+
+        if (res.data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('formModal')).hide();
+            loadData(currentPage);
+            loadSummary();
+            showToast(res.data.message || 'Saved', 'success');
+        } else {
+            showFormError(res.data.message || 'An error occurred');
+        }
+    } catch(e) {
+        showFormError(e.response?.data?.message || 'An error occurred');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function showFormError(msg) {
+    const el = document.getElementById('form-error');
+    el.textContent = msg;
+    el.classList.remove('d-none');
+}
+
+// ── DELETE ─────────────────────────────────────────────────────────────────
+function promptDelete(customerId) {
+    deletingId = customerId;
+    document.getElementById('delete-cid').textContent = customerId;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+async function confirmDelete() {
+    if (!deletingId) return;
+    try {
+        const res = await axios.delete(`/api/customers/${deletingId}`);
+        if (res.data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+            loadData(currentPage);
+            loadSummary();
+            showToast(res.data.message || 'Customer deleted', 'success');
+        }
+    } catch(e) {
+        showToast(e.response?.data?.message || 'Delete failed', 'error');
+    } finally {
+        deletingId = null;
+    }
+}
+
+// ── PAGINATION ─────────────────────────────────────────────────────────────
+function buildPagination(current, total) {
+    const el = document.getElementById('c-pagination');
+    if (total <= 1) { el.innerHTML = ''; return; }
+    let h = '';
+    if (current > 1)
+        h += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${current-1});return false;">‹</a></li>`;
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - current) <= 2)
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="loadData(${i});return false;">${i}</a></li>`;
+        else if (Math.abs(i - current) === 3)
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+    }
+    if (current < total)
+        h += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${current+1});return false;">›</a></li>`;
+    el.innerHTML = h;
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;
+        color:white;font-size:.87rem;font-weight:600;display:flex;align-items:center;gap:10px;
+        background:${type==='success'?'#10b981':'#ef4444'};box-shadow:0 4px 20px rgba(0,0,0,.15);`;
+    t.innerHTML = `<i class="bi bi-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${msg}`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+</script>
+
+{% endblock %}

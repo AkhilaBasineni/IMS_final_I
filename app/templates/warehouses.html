@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 24px 28px; color: white;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .page-header::after {
+        content: ''; position: absolute; right: -30px; top: -30px;
+        width: 180px; height: 180px; background: rgba(79,70,229,0.15);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header::before {
+        content: ''; position: absolute; right: 60px; bottom: -50px;
+        width: 120px; height: 120px; background: rgba(99,102,241,0.12);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header h2 { color: white !important; font-weight: 800; margin-bottom: 4px; }
+    .page-header h2 i { opacity: 0.85; }
+    .page-header small, .page-header p.sub { color: #94a3b8 !important; font-size: 0.875rem; margin: 0; }
+    .page-header .header-action { 
+        background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 10px 20px; color: white; font-weight: 600;
+        font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+        position: relative; z-index: 10;
+    }
+    .page-header .header-action:hover {
+        background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5);
+        transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        color: white; text-decoration: none;
+    }
+</style>
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-buildings-fill me-2"></i>Warehouse Management</h2>
+            <p class="sub mb-0">Manage storage sites and warehouse details</p>
+        </div>
+        <button class="header-action" id="btn-add-warehouse" style="display:none" onclick="openAddModal()"><i class="bi bi-plus-lg"></i> Add Warehouse</button>
+    </div>
+</div>
+
+<div class="card p-3 mb-4 shadow-sm border-0">
+    <div class="row g-2">
+        <div class="col-md-10">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="w-search" class="form-control border-start-0"
+                    placeholder="Search by name, city, state, region..."
+                    onkeyup="if(event.key==='Enter') loadData(1)">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-dark w-100" onclick="loadData(1)">Search</button>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Site ID</th><th>Site Name</th><th>Format</th>
+                    <th>State</th><th>Status</th><th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="w-table"></tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-center">
+        <ul class="pagination pagination-sm mb-0" id="w-pagination"></ul>
+    </div>
+</div>
+
+<!-- ─── Add/Edit Warehouse Modal ──────────────────────────────────────── -->
+<div class="modal fade" id="wModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 id="modalTitle">Warehouse Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="w-form">
+                    <!-- Site ID hidden (used for edit mode) -->
+                    <input type="hidden" id="m-id">
+
+                    <!-- Site Name -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Site Name <span class="text-danger">*</span></label>
+                        <input id="m-name" class="form-control" required placeholder="Enter site name">
+                    </div>
+
+                    <!-- Row: Format + State -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Site Format</label>
+                            <select id="m-format" class="form-select">
+                                <option value="">-- Select Format --</option>
+                                <option value="Digital">Digital</option>
+                                <option value="Fresh">Fresh</option>
+                                <option value="Smart">Smart</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">State</label>
+                            <div class="input-group">
+                                <select id="m-state-sel" class="form-select" onchange="onStateChange()">
+                                    <option value="">— Select State —</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-success" onclick="openStateModal()" title="Add new state">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                            <input type="hidden" id="m-state">
+                        </div>
+                    </div>
+
+                    <!-- Row: City (filtered by state) + Region (filtered by city) -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">City</label>
+                            <select id="m-city" class="form-select" onchange="onCityChange()">
+                                <option value="">— Select State first —</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Region</label>
+                            <select id="m-region" class="form-select">
+                                <option value="">— Select City first —</option>
+                                <option value="East">East</option>
+                                <option value="West">West</option>
+                                <option value="North">North</option>
+                                <option value="South">South</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Row: Store Size + Open Date -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Store Size (sq ft)</label>
+                            <input type="number" id="m-size" class="form-control" min="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Open Date</label>
+                            <input type="date" id="m-opendate" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Status</label>
+                        <select id="m-status" class="form-select">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-save me-1"></i> Save Warehouse
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Add State Modal ────────────────────────────────────────────────── -->
+<div class="modal fade" id="stateModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5><i class="bi bi-geo-alt me-2"></i>Add State</h5>
+                <button type="button" class="btn-close btn-close-white" onclick="closeStateModal()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">State Name <span class="text-danger">*</span></label>
+                    <input id="st-name" class="form-control" placeholder="e.g. Maharashtra">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">City Name</label>
+                    <input id="st-city" class="form-control" placeholder="e.g. Mumbai">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Region</label>
+                    <select id="st-region" class="form-select">
+                        <option value="">— Select Region —</option>
+                        <option value="East">East</option>
+                        <option value="West">West</option>
+                        <option value="North">North</option>
+                        <option value="South">South</option>
+                    </select>
+                </div>
+                <div id="state-msg" class="text-danger small mt-1"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" onclick="closeStateModal()">Cancel</button>
+                <button class="btn btn-info btn-sm text-white" onclick="saveState()">
+                    <i class="bi bi-check-lg me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── View Warehouse Modal ───────────────────────────────────────────── -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5><i class="bi bi-eye me-2"></i>Warehouse Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr class="border-bottom"><th class="text-muted ps-3" style="width:40%">Site ID</th><td id="v-id" class="fw-bold"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Site Name</th><td id="v-name"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Site Format</th><td id="v-format"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">State</th><td id="v-state"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">City</th><td id="v-city"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Region</th><td id="v-region"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Store Size</th><td id="v-size"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Open Date</th><td id="v-opendate"></td></tr>
+                        <tr><th class="text-muted ps-3">Status</th><td id="v-status"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let editMode       = false;
+let stateModalInst = null;
+
+function loadPageData() {
+    const role = localStorage.getItem('user_role');
+    if (role === 'Admin')
+        document.getElementById('btn-add-warehouse').style.display = 'inline-block';
+    loadStates();
+    loadData(1);
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    return isNaN(d) ? dateStr : d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function toInputDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3 && parts[0].length === 2) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return dateStr.substring(0, 10);
+}
+
+// ─── Load States into dropdown ─────────────────────────────────────────────
+async function loadStates() {
+    try {
+        const res = await axios.get('/api/states');
+        const sel = document.getElementById('m-state-sel');
+        const curr = sel.value;
+        sel.innerHTML = '<option value="">— Select State —</option>';
+        (res.data.data || []).forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.state_name; opt.textContent = s.state_name;
+            sel.appendChild(opt);
+        });
+        if (curr) sel.value = curr;
+    } catch (e) { console.error('loadStates', e); }
+}
+
+// ─── State selected → load cities ─────────────────────────────────────────
+async function onStateChange() {
+    const stateName = document.getElementById('m-state-sel').value;
+    document.getElementById('m-state').value = stateName;
+
+    const citySel  = document.getElementById('m-city');
+    const regionSel = document.getElementById('m-region');
+    citySel.innerHTML  = '<option value="">— Select City —</option>';
+    regionSel.innerHTML = '<option value="">— Select City first —</option>' +
+        ['East','West','North','South'].map(r => `<option value="${r}">${r}</option>`).join('');
+
+    if (!stateName) return;
+    try {
+        const res = await axios.get(`/api/warehouses/cities-by-state?state=${encodeURIComponent(stateName)}`);
+        const cities = res.data.data || [];
+        if (cities.length === 0) {
+            // No existing cities — allow free text
+            citySel.innerHTML = '<option value="">— No cities found —</option>';
+        } else {
+            cities.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                citySel.appendChild(opt);
+            });
+        }
+    } catch (e) { console.error('loadCities', e); }
+}
+
+// ─── City selected → enable region ────────────────────────────────────────
+function onCityChange() {
+    const city      = document.getElementById('m-city').value;
+    const regionSel = document.getElementById('m-region');
+    if (city) {
+        regionSel.innerHTML = '<option value="">— Select Region —</option>' +
+            ['East','West','North','South'].map(r => `<option value="${r}">${r}</option>`).join('');
+    } else {
+        regionSel.innerHTML = '<option value="">— Select City first —</option>';
+    }
+}
+
+// ─── State Modal ──────────────────────────────────────────────────────────
+function openStateModal() {
+    document.getElementById('st-name').value   = '';
+    document.getElementById('st-city').value   = '';
+    document.getElementById('st-region').value = '';
+    document.getElementById('state-msg').textContent = '';
+    stateModalInst = new bootstrap.Modal(document.getElementById('stateModal'));
+    stateModalInst.show();
+}
+function closeStateModal() { if (stateModalInst) stateModalInst.hide(); }
+
+async function saveState() {
+    const name   = document.getElementById('st-name').value.trim();
+    const city   = document.getElementById('st-city').value.trim();
+    const region = document.getElementById('st-region').value;
+    const msgEl  = document.getElementById('state-msg');
+    if (!name) { msgEl.textContent = 'State name is required.'; return; }
+    msgEl.textContent = '';
+    try {
+        await axios.post('/api/states', { state_name: name });
+        await loadStates();
+        // Set the newly added state
+        document.getElementById('m-state-sel').value = name;
+        document.getElementById('m-state').value     = name;
+        // Trigger city load then pre-fill
+        await onStateChange();
+        if (city)   document.getElementById('m-city').value   = city;
+        if (region) {
+            onCityChange();
+            document.getElementById('m-region').value = region;
+        }
+        closeStateModal();
+    } catch (err) { msgEl.textContent = err.response?.data?.message || 'Error saving state.'; }
+}
+
+// ─── Warehouses Table ─────────────────────────────────────────────────────
+async function loadData(page = 1) {
+    const search    = document.getElementById('w-search').value.trim();
+    const role      = localStorage.getItem('user_role');
+    const isAdmin   = role === 'Admin';
+    try {
+        const res  = await axios.get(`/api/warehouses?page=${page}&search=${encodeURIComponent(search)}`);
+        const data = res.data.data;
+        document.getElementById('w-table').innerHTML = data.items.length
+            ? data.items.map(w => `
+                <tr>
+                    <td><span class="badge bg-light text-dark border">${w.site_id || '-'}</span></td>
+                    <td><strong>${w.site_name || '-'}</strong></td>
+                    <td><span class="badge ${
+                        w.site_format === 'Digital' ? 'bg-primary' :
+                        w.site_format === 'Fresh'   ? 'bg-success' :
+                        w.site_format === 'Smart'   ? 'bg-warning text-dark' : 'bg-light text-dark border'
+                    }">${w.site_format || '-'}</span></td>
+                    <td>${w.state || '-'}</td>
+                    <td><span class="badge ${w.status === 'Active' ? 'bg-success' : 'bg-secondary'}">${w.status || '-'}</span></td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <button class="btn btn-sm btn-outline-info" onclick="viewWarehouse('${w.site_id}')">
+                                <i class="bi bi-eye me-1"></i>
+                            </button>
+                            ${isAdmin ? `
+                            <button class="btn btn-sm btn-outline-primary" onclick="openEdit('${w.site_id}')">
+                                <i class="bi bi-pencil me-1"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteW('${w.site_id}')">
+                                <i class="bi bi-trash me-1"></i>
+                            </button>` : ''}
+                        </div>
+                    </td>
+                </tr>`).join('')
+            : `<tr><td colspan="6" class="text-center text-muted py-4">No warehouses found.</td></tr>`;
+
+        let h = '';
+        for (let i = 1; i <= data.pages; i++)
+            h += `<li class="page-item ${i === data.current_page ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="loadData(${i}); return false;">${i}</a></li>`;
+        buildPagination(data.current_page, data.pages, 'loadData', 'w-pagination');
+    } catch (e) {
+        console.error(e);
+        document.getElementById('w-table').innerHTML =
+            `<tr><td colspan="6" class="text-center text-danger py-4">Failed to load data.</td></tr>`;
+    }
+}
+
+function openAddModal() {
+    editMode = false;
+    document.getElementById('w-form').reset();
+    document.getElementById('m-id').value = '';
+    document.getElementById('m-city').innerHTML  = '<option value="">— Select State first —</option>';
+    document.getElementById('m-region').innerHTML = '<option value="">— Select City first —</option>';
+    document.getElementById('modalTitle').innerText = 'Add Warehouse';
+    new bootstrap.Modal(document.getElementById('wModal')).show();
+}
+
+async function openEdit(id) {
+    try {
+        const res = await axios.get(`/api/warehouses/${id}`);
+        const w   = res.data.data;
+        editMode  = true;
+        document.getElementById('m-id').value       = w.site_id     || '';
+        document.getElementById('m-name').value     = w.site_name   || '';
+        document.getElementById('m-format').value   = w.site_format || '';
+        document.getElementById('m-state-sel').value = w.state      || '';
+        document.getElementById('m-state').value    = w.state       || '';
+        document.getElementById('m-size').value     = w.store_size  || '';
+        document.getElementById('m-opendate').value = toInputDate(w.open_date);
+        document.getElementById('m-status').value   = w.status      || 'Active';
+
+        // Load cities for this state then set city and region
+        await onStateChange();
+        document.getElementById('m-city').value   = w.city   || '';
+        onCityChange();
+        document.getElementById('m-region').value = w.region || '';
+
+        document.getElementById('modalTitle').innerText = 'Edit Warehouse';
+        new bootstrap.Modal(document.getElementById('wModal')).show();
+    } catch (e) { alert('Error fetching warehouse details.'); }
+}
+
+async function viewWarehouse(id) {
+    try {
+        const res = await axios.get(`/api/warehouses/${id}`);
+        const w   = res.data.data;
+        document.getElementById('v-id').innerText      = w.site_id     || 'N/A';
+        document.getElementById('v-name').innerText    = w.site_name   || 'N/A';
+        document.getElementById('v-format').innerText  = w.site_format || 'N/A';
+        document.getElementById('v-state').innerText   = w.state       || 'N/A';
+        document.getElementById('v-city').innerText    = w.city        || 'N/A';
+        document.getElementById('v-region').innerText  = w.region      || 'N/A';
+        document.getElementById('v-size').innerText    = w.store_size
+            ? `${Number(w.store_size).toLocaleString()} sq ft` : 'N/A';
+        document.getElementById('v-opendate').innerText = formatDate(w.open_date);
+        document.getElementById('v-status').innerHTML  =
+            `<span class="badge ${w.status === 'Active' ? 'bg-success' : 'bg-secondary'}">${w.status || 'N/A'}</span>`;
+        new bootstrap.Modal(document.getElementById('viewModal')).show();
+    } catch (e) { alert('Error fetching warehouse details.'); }
+}
+
+document.getElementById('w-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const id      = document.getElementById('m-id').value.trim();
+    const cityVal = document.getElementById('m-city').value ||
+                    document.getElementById('m-city').options[document.getElementById('m-city').selectedIndex]?.text || '';
+    const payload = {
+        site_name:   document.getElementById('m-name').value.trim(),
+        site_format: document.getElementById('m-format').value,
+        region:      document.getElementById('m-region').value,
+        city:        cityVal,
+        state:       document.getElementById('m-state').value.trim(),
+        store_size:  document.getElementById('m-size').value
+                        ? parseInt(document.getElementById('m-size').value, 10) : null,
+        open_date:   document.getElementById('m-opendate').value || null,
+        status:      document.getElementById('m-status').value
+    };
+    try {
+        if (editMode) await axios.put(`/api/warehouses/${id}`, payload);
+        else          await axios.post('/api/warehouses', payload);
+        bootstrap.Modal.getInstance(document.getElementById('wModal')).hide();
+        loadData(1);
+    } catch (err) { alert(err.response?.data?.message || 'Error saving warehouse.'); }
+};
+
+async function deleteW(id) {
+    if (confirm(`Permanently delete warehouse ${id}? This cannot be undone.`)) {
+        try {
+            await axios.delete(`/api/warehouses/${id}`);
+            loadData(1);
+        } catch (e) { alert(e.response?.data?.message || 'Error deleting warehouse.'); }
+    }
+}
+
+function buildPagination(current, total, loadFn, containerId) {
+    if (total <= 1) { document.getElementById(containerId).innerHTML = ''; return; }
+    let h = '';
+    if (current > 1)  h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current-1});return false;">‹</a></li>`;
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="${loadFn}(${i});return false;">${i}</a></li>`;
+        } else if (Math.abs(i - current) === 3) {
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+        }
+    }
+    if (current < total) h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current+1});return false;">›</a></li>`;
+    document.getElementById(containerId).innerHTML = h;
+}
+
+</script>
+{% endblock %}

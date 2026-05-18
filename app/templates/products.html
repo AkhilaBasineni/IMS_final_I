@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 24px 28px; color: white;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .page-header::after {
+        content: ''; position: absolute; right: -30px; top: -30px;
+        width: 180px; height: 180px; background: rgba(79,70,229,0.15);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header::before {
+        content: ''; position: absolute; right: 60px; bottom: -50px;
+        width: 120px; height: 120px; background: rgba(99,102,241,0.12);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header h2 { color: white !important; font-weight: 800; margin-bottom: 4px; }
+    .page-header h2 i { opacity: 0.85; }
+    .page-header small, .page-header p.sub { color: #94a3b8 !important; font-size: 0.875rem; margin: 0; }
+    .page-header .header-action { 
+        background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 10px 20px; color: white; font-weight: 600;
+        font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+        position: relative; z-index: 10;
+    }
+    .page-header .header-action:hover {
+        background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5);
+        transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        color: white; text-decoration: none;
+    }
+    /* Hide scrollbar on table container (desktop only) */
+    @media (min-width: 993px) {
+        .advanced-table-container { scrollbar-width: none; -ms-overflow-style: none; }
+        .advanced-table-container::-webkit-scrollbar { display: none; }
+        .table-responsive { scrollbar-width: none; -ms-overflow-style: none; overflow-x: auto; }
+        .table-responsive::-webkit-scrollbar { display: none; }
+    }
+    @media (max-width: 992px) {
+        .advanced-table-container, .table-responsive {
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x pan-y;
+        }
+    }
+    /* Card borders */
+    .card { border: 1.5px solid rgba(79,70,229,0.15) !important; }
+    .card:hover { border-color: rgba(79,70,229,0.30) !important; }
+    /* Fixed row height so pages don't jump */
+    #p-table tr { height: 58px; }
+    #p-table td { vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+</style>
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-tags me-2"></i>Product Catalog</h2>
+            <p class="sub mb-0">Browse and manage all product SKUs</p>
+        </div>
+        <button class="header-action" id="btn-add-product" style="display:none" onclick="openAddModal()"><i class="bi bi-plus-lg"></i> Add Product</button>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="advanced-filter-card" style="margin-bottom:24px;">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-7">
+            <div class="input-group">
+                <span class="input-group-text" style="background:var(--bg-subtle);border-color:var(--border);"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="p-search" class="form-control border-start-0"
+                    placeholder="Search by name, ID, category, subcategory..."
+                    onkeyup="if(event.key==='Enter') loadData(1)">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select id="p-status" class="form-select" onchange="loadData(1)">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="">All Status</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn-advanced-primary w-100" onclick="loadData(1)"><i class="bi bi-funnel me-1"></i> Filter</button>
+        </div>
+    </div>
+</div>
+
+<!-- Products Table -->
+<div class="advanced-table-container">
+    <div class="table-responsive">
+        <table class="advanced-table advanced-table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Name</th><th>Category</th>
+                    <th class="text-center">Status</th><th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="p-table"></tbody>
+        </table>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border-light);background:var(--bg-subtle);">
+        <ul class="pagination pagination-sm mb-0" id="p-pagination"></ul>
+    </div>
+</div>
+
+<!-- ─── Add/Edit Product Modal ─────────────────────────────────────────── -->
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 id="modalTitle"><i class="bi bi-box-seam me-2"></i>Product Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="p-form">
+                    <!-- Row 1: Product ID (hidden) + Product Name -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3" id="product-id-field">
+                            <label class="form-label small fw-bold">Product ID</label>
+                            <input id="m-id" class="form-control bg-light text-muted" readonly placeholder="Auto-generated">
+                        </div>
+                        <div class="col-md-8 mb-3" id="product-name-col">
+                            <label class="form-label small fw-bold">Product Name <span class="text-danger">*</span></label>
+                            <input id="m-name" class="form-control" required placeholder="Enter product name">
+                        </div>
+                    </div>
+                    <!-- Row 2: Category + Subcategory -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Category</label>
+                            <div class="input-group">
+                                <select id="m-cat" class="form-select" onchange="onCategoryChange()">
+                                    <option value="">— Select Category —</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-success" title="Add new category" onclick="openCategoryModal()">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Subcategory</label>
+                            <select id="m-subcat" class="form-select">
+                                <option value="">— Select Subcategory —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Row 3: Unit Cost + Selling Price -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Unit Cost</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" id="m-cost" class="form-control" value="0.00">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Selling Price <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" id="m-price" class="form-control" required value="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Row 4: Shelf Life + Status -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Shelf Life <small class="text-muted fw-normal">(days)</small></label>
+                            <input type="number" id="m-shelf" class="form-control" min="1" placeholder="e.g. 30">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Status <span class="text-danger">*</span></label>
+                            <select id="m-status" class="form-select" required>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Row 5: Supplier -->
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label small fw-bold">Supplier</label>
+                            <div class="input-group">
+                                <select id="m-supplier" class="form-select">
+                                    <option value="">— Select Supplier —</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-warning" title="Add new supplier" onclick="openSupplierModal()">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-save me-1"></i> Save Product
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Add Category Modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="categoryModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5><i class="bi bi-tags me-2"></i>Add Category</h5>
+                <button type="button" class="btn-close btn-close-white" onclick="closeCategoryModal()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Category Name <span class="text-danger">*</span></label>
+                    <input id="c-name" class="form-control" placeholder="e.g. Dairy">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Subcategory Name</label>
+                    <input id="c-subname" class="form-control" placeholder="e.g. Cheese">
+                </div>
+                <div id="cat-msg" class="text-danger small mt-1"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" onclick="closeCategoryModal()">Cancel</button>
+                <button class="btn btn-success btn-sm" onclick="saveCategory()">
+                    <i class="bi bi-check-lg me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Add Supplier Modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="supplierModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark">
+                <h5><i class="bi bi-truck me-2"></i>Add Supplier</h5>
+                <button type="button" class="btn-close" onclick="closeSupplierModal()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Supplier Name <span class="text-danger">*</span></label>
+                    <input id="sup-name" class="form-control" placeholder="e.g. ABC Traders">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Contact Email</label>
+                    <input id="sup-email" type="email" class="form-control" placeholder="e.g. contact@abctraders.com">
+                </div>
+                <div id="sup-msg" class="text-danger small mt-1"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" onclick="closeSupplierModal()">Cancel</button>
+                <button class="btn btn-warning btn-sm" onclick="saveSupplier()">
+                    <i class="bi bi-check-lg me-1"></i>Save Supplier
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── View Product Modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5><i class="bi bi-eye me-2"></i>Product Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr class="border-bottom"><th class="text-muted ps-3" style="width:40%">Product ID</th><td id="v-id" class="fw-bold"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Product Name</th><td id="v-name"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Category</th><td id="v-cat"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Subcategory</th><td id="v-subcat"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Unit Cost</th><td id="v-cost"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Selling Price</th><td id="v-price"></td></tr>
+                        
+                        <tr class="border-bottom"><th class="text-muted ps-3">Shelf Life</th><td id="v-shelf"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Status</th><td id="v-status"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Supplier</th><td id="v-supplier"></td></tr>
+                        <tr><th class="text-muted ps-3">Supplier ID</th><td id="v-supplier-id" class="text-muted small"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let editMode          = false;
+let categoriesMap     = {};
+let suppliersArr      = [];
+let productModalInst  = null;
+let categoryModalInst = null;
+let supplierModalInst = null;
+
+function loadPageData() {
+    const role = localStorage.getItem('user_role');
+    if (role === 'Admin' || role === 'Manager')
+        document.getElementById('btn-add-product').style.display = 'inline-block';
+    loadCategories();
+    loadSuppliers();
+    loadData(1);
+}
+
+async function loadCategories() {
+    try {
+        const res = await axios.get('/api/products/categories/all');
+        categoriesMap = {};
+        const select = document.getElementById('m-cat');
+        select.innerHTML = '<option value="">— Select Category —</option>';
+        res.data.data.forEach(c => {
+            categoriesMap[c.category_name] = c.subcategories;
+            const opt = document.createElement('option');
+            opt.value = c.category_name; opt.textContent = c.category_name;
+            select.appendChild(opt);
+        });
+    } catch (e) { console.error('loadCategories', e); }
+}
+
+async function loadSuppliers() {
+    try {
+        const res = await axios.get('/api/products/suppliers/all');
+        suppliersArr = res.data.data;
+        const select = document.getElementById('m-supplier');
+        if (!select) return; // supplier field removed from form
+        select.innerHTML = '<option value="">— Select Supplier —</option>';
+        suppliersArr.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.supplier_id; opt.textContent = s.supplier_name;
+            select.appendChild(opt);
+        });
+    } catch (e) { console.error('loadSuppliers', e); }
+}
+
+function onCategoryChange() {
+    const catName   = document.getElementById('m-cat').value;
+    const subcatSel = document.getElementById('m-subcat');
+    subcatSel.innerHTML = '<option value="">— Select Subcategory —</option>';
+    if (catName && categoriesMap[catName]) {
+        categoriesMap[catName].forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.subcategory_name; opt.textContent = s.subcategory_name;
+            subcatSel.appendChild(opt);
+        });
+    }
+}
+
+// ─── Category Modal ────────────────────────────────────────────────────────
+function openCategoryModal() {
+    document.getElementById('c-name').value    = '';
+    document.getElementById('c-subname').value = '';
+    document.getElementById('cat-msg').textContent = '';
+    categoryModalInst = new bootstrap.Modal(document.getElementById('categoryModal'));
+    categoryModalInst.show();
+}
+function closeCategoryModal() { if (categoryModalInst) categoryModalInst.hide(); }
+
+async function saveCategory() {
+    const catName = document.getElementById('c-name').value.trim();
+    const subName = document.getElementById('c-subname').value.trim();
+    const msgEl   = document.getElementById('cat-msg');
+    if (!catName) { msgEl.textContent = 'Category name is required.'; return; }
+    msgEl.textContent = '';
+    try {
+        await axios.post('/api/products/categories/add', { category_name: catName, subcategory_name: subName });
+        await loadCategories();
+        document.getElementById('m-cat').value = catName;
+        onCategoryChange();
+        if (subName) document.getElementById('m-subcat').value = subName;
+        closeCategoryModal();
+    } catch (err) { msgEl.textContent = err.response?.data?.message || 'Error saving category.'; }
+}
+
+// ─── Supplier Modal ────────────────────────────────────────────────────────
+function openSupplierModal() {
+    document.getElementById('sup-name').value = '';
+    document.getElementById('sup-msg').textContent = '';
+    supplierModalInst = new bootstrap.Modal(document.getElementById('supplierModal'));
+    supplierModalInst.show();
+}
+function closeSupplierModal() { if (supplierModalInst) supplierModalInst.hide(); }
+
+async function saveSupplier() {
+    const name  = document.getElementById('sup-name').value.trim();
+    const email = document.getElementById('sup-email').value.trim();
+    const msgEl = document.getElementById('sup-msg');
+    if (!name) { msgEl.textContent = 'Supplier name is required.'; return; }
+    msgEl.textContent = '';
+    try {
+        const res = await axios.post('/api/products/suppliers/add', { supplier_name: name, contact_email: email || null });
+        await loadSuppliers();
+        const supSel = document.getElementById('m-supplier');
+        if (supSel) supSel.value = res.data.supplier_id;
+        document.getElementById('sup-name').value  = '';
+        document.getElementById('sup-email').value = '';
+        closeSupplierModal();
+    } catch (err) { msgEl.textContent = err.response?.data?.message || 'Error saving supplier.'; }
+}
+
+// ─── Products Table ────────────────────────────────────────────────────────
+async function loadData(page = 1) {
+    const s      = document.getElementById('p-search').value;
+    const status = document.getElementById('p-status').value;
+    const role      = localStorage.getItem('user_role');
+    const isAdmin   = role === 'Admin';
+    const isManager = role === 'Manager';
+    try {
+        const res  = await axios.get(`/api/products?page=${page}&search=${encodeURIComponent(s)}&status=${encodeURIComponent(status)}`);
+        const data = res.data.data;
+        document.getElementById('p-table').innerHTML = data.items.length
+            ? data.items.map(p => `
+                <tr>
+                    <td><span class="badge bg-light text-dark border">${p.product_id}</span></td>
+                    <td><strong>${p.product_name}</strong></td>
+                    <td>
+                        <span class="text-muted">${p.category || 'N/A'}</span>${p.subcategory ? `<span class="text-secondary" style="font-size:0.8rem;"> / ${p.subcategory}</span>` : ''}
+                    </td>
+                    <td class="text-center">
+                        ${p.status === 'Active'
+                            ? `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2"><i class="bi bi-check-circle-fill me-1"></i>Active</span>`
+                            : `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2"><i class="bi bi-dash-circle-fill me-1"></i>Inactive</span>`}
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <button class="btn btn-sm btn-outline-info" title="View" onclick="viewProduct('${p.product_id}')">
+                                <i class="bi bi-eye-fill"></i>
+                            </button>
+                            ${(isAdmin || isManager) ? `
+                            <button class="btn btn-sm btn-outline-warning" title="Edit" onclick="openEdit('${p.product_id}')">
+                                <i class="bi bi-pencil-fill"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteP('${p.product_id}')">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>` : ''}
+                        </div>
+                    </td>
+                </tr>`).join('')
+            : `<tr><td colspan="5" class="text-center text-muted py-4">No products found.</td></tr>`;
+
+        buildPagination(data.current_page, data.pages, 'loadData', 'p-pagination');
+        // Scroll table into view without jumping the whole page
+        if (page > 1) document.querySelector('.advanced-table-container').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) { console.error(e); }
+}
+
+function openAddModal() {
+    editMode = false;
+    document.getElementById('p-form').reset();
+    document.getElementById('m-id').value         = '';
+    document.getElementById('m-shelf').value      = '';
+    document.getElementById('m-subcat').innerHTML = '<option value="">— Select Subcategory —</option>';
+    document.getElementById('m-supplier').value    = '';
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-plus-circle me-2"></i>Add Product';
+    document.getElementById('product-id-field').style.display = 'none';
+    document.getElementById('product-name-col').className     = 'col-md-12 mb-3';
+    productModalInst = new bootstrap.Modal(document.getElementById('productModal'));
+    productModalInst.show();
+}
+
+async function openEdit(id) {
+    try {
+        const res = await axios.get(`/api/products/${id}`);
+        const p   = res.data.data;
+        editMode  = true;
+        document.getElementById('m-id').value     = p.product_id;
+        document.getElementById('m-name').value   = p.product_name;
+        document.getElementById('m-cat').value    = p.category || '';
+        onCategoryChange();
+        document.getElementById('m-subcat').value = p.subcategory || '';
+        document.getElementById('m-cost').value   = p.unit_cost;
+        document.getElementById('m-price').value  = p.unit_price;
+        document.getElementById('m-shelf').value    = p.shelf_life || '';
+        document.getElementById('m-status').value  = p.status || 'Active';
+        document.getElementById('m-supplier').value = p.supplier_id || '';
+        document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Product';
+        document.getElementById('product-id-field').style.display = 'none';
+        document.getElementById('product-name-col').className     = 'col-md-12 mb-3';
+        productModalInst = new bootstrap.Modal(document.getElementById('productModal'));
+        productModalInst.show();
+    } catch (e) { alert('Error fetching product'); }
+}
+
+async function viewProduct(id) {
+    try {
+        const res = await axios.get(`/api/products/${id}`);
+        const p   = res.data.data;
+        document.getElementById('v-id').innerText       = p.product_id;
+        document.getElementById('v-name').innerText     = p.product_name;
+        document.getElementById('v-cat').innerText      = p.category    || 'N/A';
+        document.getElementById('v-subcat').innerText   = p.subcategory || 'N/A';
+        document.getElementById('v-cost').innerText     = `₹${parseFloat(p.unit_cost).toFixed(2)}`;
+        document.getElementById('v-price').innerText    = `₹${parseFloat(p.unit_price).toFixed(2)}`;
+        
+        document.getElementById('v-shelf').innerText      = p.shelf_life  ? `${p.shelf_life} days` : 'N/A';
+        document.getElementById('v-supplier').innerText    = p.supplier    || 'N/A';
+        document.getElementById('v-supplier-id').innerText = p.supplier_id ? `#${p.supplier_id}` : '—';
+        document.getElementById('v-status').innerHTML   =
+            `<span class="badge ${p.status === 'Active' ? 'bg-success' : 'bg-secondary'}">${p.status || 'N/A'}</span>`;
+        new bootstrap.Modal(document.getElementById('viewModal')).show();
+    } catch (e) { alert('Error fetching product details'); }
+}
+
+document.getElementById('p-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const id        = document.getElementById('m-id').value;
+    const shelfVal  = document.getElementById('m-shelf').value;
+    const payload = {
+        product_name: document.getElementById('m-name').value,
+        category:     document.getElementById('m-cat').value    || null,
+        subcategory:  document.getElementById('m-subcat').value || null,
+        unit_cost:    parseFloat(document.getElementById('m-cost').value),
+        unit_price:   parseFloat(document.getElementById('m-price').value),
+        status:       document.getElementById('m-status').value,
+        shelf_life:   shelfVal ? parseInt(shelfVal) : null,
+        supplier_id:  document.getElementById('m-supplier').value || null
+    };
+    try {
+        if (editMode) await axios.put(`/api/products/${id}`, payload);
+        else          await axios.post('/api/products', payload);
+        bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+        loadData(1);
+    } catch (err) { alert(err.response?.data?.message || 'Error saving'); }
+};
+
+async function deleteP(id) {
+    if (confirm(`Deactivate product ${id}? It will be marked Inactive.`)) {
+        try {
+            await axios.delete(`/api/products/${id}`);
+            loadData(1);
+        } catch (e) { alert(e.response?.data?.message || 'Error deleting product'); }
+    }
+}
+
+function buildPagination(current, total, loadFn, containerId) {
+    if (total <= 1) { document.getElementById(containerId).innerHTML = ''; return; }
+    let h = '';
+    if (current > 1)  h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current-1});return false;">‹</a></li>`;
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="${loadFn}(${i});return false;">${i}</a></li>`;
+        } else if (Math.abs(i - current) === 3) {
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+        }
+    }
+    if (current < total) h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current+1});return false;">›</a></li>`;
+    document.getElementById(containerId).innerHTML = h;
+}
+
+</script>
+{% endblock %}

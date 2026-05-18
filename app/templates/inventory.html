@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .kpi-card { border-radius:var(--radius)!important;border:1px solid var(--border-light)!important;background:var(--bg-card);transition:all 0.3s cubic-bezier(0.16,1,0.3,1); }
+    .kpi-card:hover { transform:translateY(-3px);box-shadow:var(--shadow-md)!important;border-color:rgba(79,70,229,0.15)!important; }
+    .kpi-icon { width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:14px;font-size:1.25rem; }
+    .kpi-icon.blue   { background:linear-gradient(135deg,rgba(79,70,229,0.12),rgba(14,165,233,0.08));color:var(--primary); }
+    .kpi-icon.red    { background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(248,113,113,0.08));color:var(--coral); }
+    .kpi-icon.green  { background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(45,212,191,0.08));color:var(--emerald); }
+    .kpi-icon.orange { background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(251,191,36,0.08));color:var(--amber); }
+    .kpi-value  { font-size:1.7rem;font-weight:800;line-height:1.1;color:var(--text); }
+    .kpi-label  { font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em; }
+    .badge-yes  { background:rgba(239,68,68,0.1);color:#b91c1c;border:1px solid rgba(239,68,68,0.2);border-radius:20px;padding:3px 12px;font-size:0.74rem;font-weight:700; }
+    .badge-no   { background:rgba(16,185,129,0.1);color:#065f46;border:1px solid rgba(16,185,129,0.2);border-radius:20px;padding:3px 12px;font-size:0.74rem;font-weight:700; }
+    .section-card { border-radius:var(--radius)!important;border:1px solid var(--border-light)!important;box-shadow:var(--shadow)!important;background:var(--bg-card); }
+    .id-pill { font-family:monospace;background:var(--bg-subtle);color:var(--text-secondary);border-radius:6px;padding:2px 8px;font-size:0.78rem;border:1px solid var(--border-light); }
+    .stat-box { background:var(--bg-subtle);border-radius:var(--radius-sm);padding:12px 16px;text-align:center;border:1px solid var(--border-light); }
+    .stat-box .val { font-size:1.3rem;font-weight:800;color:var(--text); }
+    .stat-box .lbl { font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em; }
+
+    .page-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 24px 28px; color: white;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .page-header::after {
+        content: ''; position: absolute; right: -30px; top: -30px;
+        width: 180px; height: 180px; background: rgba(79,70,229,0.15);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header::before {
+        content: ''; position: absolute; right: 60px; bottom: -50px;
+        width: 120px; height: 120px; background: rgba(99,102,241,0.12);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header h2 { color: white !important; font-weight: 800; margin-bottom: 4px; }
+    .page-header h2 i { opacity: 0.85; }
+    .page-header small, .page-header p.sub { color: #94a3b8 !important; font-size: 0.875rem; margin: 0; }
+    .page-header .header-action { 
+        background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 10px 20px; color: white; font-weight: 600;
+        font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+        position: relative; z-index: 10;
+    }
+    .page-header .header-action:hover {
+        background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5);
+        transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        color: white; text-decoration: none;
+    }
+
+    /* KPI Card borders */
+    .kpi-card, .section-card {
+        border: 1.5px solid rgba(79,70,229,0.15) !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+    }
+    .kpi-card:hover, .section-card:hover {
+        border-color: rgba(79,70,229,0.35) !important;
+        box-shadow: 0 8px 24px rgba(79,70,229,0.12) !important;
+    }
+    .kpi-value { display: block; }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-archive me-2"></i>Inventory Management</h2>
+            <p class="sub mb-0" id="scope-label">Loading scope...</p>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4" id="kpi-row">
+    <div class="col-6 col-md-3">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon blue"><i class="bi bi-archive"></i></div>
+                <div><div class="kpi-label">Total Records</div><div class="kpi-value" id="kpi-total">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon red"><i class="bi bi-exclamation-circle"></i></div>
+                <div><div class="kpi-label">Stockouts</div><div class="kpi-value text-danger" id="kpi-stockout">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon green"><i class="bi bi-boxes"></i></div>
+                <div><div class="kpi-label">Avg Ending Inv.</div><div class="kpi-value" id="kpi-avg">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon orange"><i class="bi bi-arrow-repeat"></i></div>
+                <div><div class="kpi-label">Replenishment</div><div class="kpi-value" id="kpi-replen">—</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="advanced-filter-card" style="margin-bottom:24px;">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text" style="background:var(--bg-subtle);border-color:var(--border);"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="i-search" class="form-control border-start-0"
+                    placeholder="Search product, site, category..."
+                    onkeyup="if(event.key==='Enter') loadData(1)">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select id="i-site" class="form-select" onchange="loadData(1)">
+                <option value="">All Sites</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select id="i-stockout" class="form-select" onchange="loadData(1)">
+                <option value="">All Stockout</option>
+                <option value="Yes">Stockout: Yes</option>
+                <option value="No">Stockout: No</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn-advanced-primary w-100" onclick="loadData(1)"><i class="bi bi-funnel me-1"></i> Filter</button>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="advanced-table-container">
+    <div class="table-responsive">
+        <table class="advanced-table advanced-table-striped">
+            <thead>
+                <tr>
+                    <th style="width:40px">#</th>
+                    <th>Site ID</th>
+                    <th>Product ID</th>
+                    <th class="text-center">Beginning</th>
+                    <th class="text-center">Ending</th>
+                    <th class="text-center">Replenishment</th>
+                    <th class="text-center">Stockout</th>
+                </tr>
+            </thead>
+            <tbody id="i-table">
+                <tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border-light);background:var(--bg-subtle);display:flex;justify-content:space-between;align-items:center;">
+        <small class="text-muted" id="i-count"></small>
+        <ul class="pagination pagination-sm mb-0" id="i-pagination"></ul>
+    </div>
+</div>
+
+<!-- ─── View Modal (with units_sold & returns) ────────────────────────────── -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5><i class="bi bi-info-circle me-2"></i>Inventory Detail</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="view-body">
+                <div class="text-center py-4"><span class="spinner-border text-info"></span></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+
+function loadPageData() {
+    loadSummary();
+    loadSitesDropdown();
+    loadProductsDropdown();
+    loadData(1);
+    const role = localStorage.getItem('user_role');
+    document.getElementById('scope-label').innerText =
+        role === 'Admin' ? 'Viewing all sites across all states' : 'Viewing sites in your assigned state';
+}
+
+async function loadSummary() {
+    try {
+        const res = await axios.get('/api/inventory/summary');
+        const d   = res.data.data;
+        document.getElementById('kpi-total').innerText    = d.total_records.toLocaleString();
+        document.getElementById('kpi-stockout').innerText  = d.stockout_count.toLocaleString();
+        document.getElementById('kpi-avg').innerText      = d.avg_ending_inventory.toLocaleString();
+        document.getElementById('kpi-replen').innerText   = d.total_replenishment.toLocaleString();
+    } catch (e) { console.error(e); }
+}
+
+async function loadSitesDropdown() {
+    try {
+        const res   = await axios.get('/api/inventory/sites');
+        const sites = res.data.data;
+        const fSel  = document.getElementById('i-site');
+        const mSel  = document.getElementById('m-site');
+        if (fSel) {
+            fSel.innerHTML = '<option value="">All Sites</option>';
+            sites.forEach(s => fSel.appendChild(new Option(`${s.site_id} — ${s.site_name}`, s.site_id)));
+        }
+        if (mSel) {
+            mSel.innerHTML = '<option value="">— Select Site —</option>';
+            sites.forEach(s => mSel.appendChild(new Option(`${s.site_id} — ${s.site_name}`, s.site_id)));
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function loadProductsDropdown(q = '') {
+    try {
+        const res   = await axios.get(`/api/inventory/products?q=${encodeURIComponent(q)}`);
+        const prods = res.data.data;
+        const sel   = document.getElementById('m-product');
+        if (!sel) return;   // modal not present in DOM yet — skip silently
+        const cur   = sel.value;
+        sel.innerHTML = '<option value="">— Select Product —</option>';
+        prods.forEach(p => sel.appendChild(new Option(`${p.product_id} — ${p.product_name} (${p.category || '—'})`, p.product_id)));
+        if (cur) sel.value = cur;
+    } catch (e) { console.error(e); }
+}
+
+async function loadData(page = 1) {
+    currentPage = page;
+    const search   = document.getElementById('i-search').value.trim();
+    const site     = document.getElementById('i-site').value;
+    const stockout = document.getElementById('i-stockout').value;
+
+    const params = new URLSearchParams({ page, per_page: 15 });
+    if (search)   params.set('search', search);
+    if (site)     params.set('site_id', site);
+    if (stockout) params.set('stockout', stockout);
+
+    document.getElementById('i-table').innerHTML =
+        `<tr><td colspan="7" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading...</td></tr>`;
+
+    try {
+        const res  = await axios.get(`/api/inventory?${params}`);
+        const data = res.data.data;
+
+        document.getElementById('i-count').innerText =
+            `Showing ${data.items.length} of ${data.total.toLocaleString()} records`;
+
+        if (!data.items.length) {
+            document.getElementById('i-table').innerHTML =
+                `<tr><td colspan="7" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No inventory records found.</td></tr>`;
+        } else {
+            document.getElementById('i-table').innerHTML = data.items.map((r, idx) => `
+                <tr>
+                    <td class="text-muted" style="font-size:0.8rem">${(page - 1) * 15 + idx + 1}</td>
+                    <td>
+                        <span class="id-pill">${r.site_id}</span>
+                        <div class="text-muted" style="font-size:0.74rem;margin-top:2px">${r.site_name}</div>
+                    </td>
+                    <td>
+                        <span class="id-pill">${r.product_id}</span>
+                        <div class="text-muted" style="font-size:0.74rem;margin-top:2px">${r.product_name}</div>
+                    </td>
+                    <td class="text-center fw-semibold">${(r.beginning_inventory ?? 0).toLocaleString()}</td>
+                    <td class="text-center fw-semibold">${(r.ending_inventory ?? 0).toLocaleString()}</td>
+                    <td class="text-center text-primary fw-semibold">${(r.replenishment ?? 0).toLocaleString()}</td>
+                    <td class="text-center">
+                        <span class="${r.stockout_flag === 'Yes' ? 'badge-yes' : 'badge-no'}">${r.stockout_flag}</span>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn-advanced-secondary btn-sm" onclick="viewRecord(${r.id})" title="View Detail" style="padding:6px 12px;font-size:0.8rem;">
+                            <i class="bi bi-eye-fill"></i>
+                        </button>
+                    </td>
+                </tr>`).join('');
+        }
+
+        // Pagination
+        buildPagination(page, data.pages, 'loadData', 'i-pagination');
+
+    } catch (e) {
+        console.error(e);
+        document.getElementById('i-table').innerHTML =
+            `<tr><td colspan="7" class="text-center text-danger py-4">Failed to load data.</td></tr>`;
+    }
+}
+
+/* ── View Record (includes units_sold & returns from sales) ── */
+async function viewRecord(id) {
+    document.getElementById('view-body').innerHTML =
+        `<div class="text-center py-4"><span class="spinner-border text-info"></span></div>`;
+    new bootstrap.Modal(document.getElementById('viewModal')).show();
+
+    try {
+        const res = await axios.get(`/api/inventory/${id}`);
+        const r   = res.data.data;
+        const netSold  = (r.net_sold !== undefined) ? r.net_sold : Math.max(((r.units_sold || 0) - (r.returns || 0) - ((r.so_returns && r.so_returns.good_qty) || 0)), 0);
+        const soGoodQty = (r.so_returns && r.so_returns.good_qty) || 0;
+        const netSoldLabel = soGoodQty > 0
+            ? `Net Sold <span title="Units Sold − Sales Returns − SO Returns (Good)" style="font-size:.65rem;color:#94a3b8;cursor:help;">= Sold−Returns−SO</span>`
+            : `Net Sold`;
+
+        document.getElementById('view-body').innerHTML = `
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="text-muted small fw-bold text-uppercase mb-1">Site</div>
+                    <div class="fw-semibold">${r.site_name}</div>
+                    <span class="id-pill">${r.site_id}</span>
+                    ${r.state_name ? `<span class="text-muted small ms-1">· ${r.state_name}</span>` : ''}
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small fw-bold text-uppercase mb-1">Product</div>
+                    <div class="fw-semibold">${r.product_name}</div>
+                    <span class="id-pill">${r.product_id}</span>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small fw-bold text-uppercase mb-1">Category</div>
+                    <div>${r.category || '—'} ${r.subcategory ? '/ ' + r.subcategory : ''}</div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small fw-bold text-uppercase mb-1">Stockout Flag</div>
+                    <span class="${r.stockout_flag === 'Yes' ? 'badge-yes' : 'badge-no'}">${r.stockout_flag}</span>
+                </div>
+            </div>
+
+            <hr class="my-3">
+            <div class="text-muted small fw-bold text-uppercase mb-2">Inventory Levels</div>
+            <div class="row g-2 mb-3">
+                <div class="col-4">
+                    <div class="stat-box">
+                        <div class="lbl">Beginning</div>
+                        <div class="val text-dark">${(r.beginning_inventory ?? 0).toLocaleString()}</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-box" style="background:#eff6ff;">
+                        <div class="lbl" style="color:#3b82f6">Ending <span title="= Beginning + Replenishment − Net Sold" style="font-size:.65rem;color:#94a3b8;cursor:help;">(computed)</span></div>
+                        <div class="val text-primary">${(r.ending_inventory ?? 0).toLocaleString()}</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-box" style="background:#eff6ff;">
+                        <div class="lbl" style="color:#3b82f6">Replenishment</div>
+                        <div class="val text-primary">${(r.replenishment ?? 0).toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-muted small fw-bold text-uppercase mb-2">Sales Activity (from Sales Data)</div>
+            <div class="row g-2 mb-3">
+                <div class="col-4">
+                    <div class="stat-box" style="background:#f0fdf4;">
+                        <div class="lbl" style="color:#16a34a">Units Sold</div>
+                        <div class="val text-success">${(r.units_sold || 0).toLocaleString()}</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-box" style="background:#fef2f2;">
+                        <div class="lbl" style="color:#dc2626">Returns</div>
+                        <div class="val text-danger">${(r.returns || 0).toLocaleString()}</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-box" style="background:#fafafa;">
+                        <div class="lbl">${netSoldLabel}</div>
+                        <div class="val">${netSold.toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+
+            ${(() => {
+                const sr = r.so_returns;
+                if (!sr) return '';
+                const hasAny = sr.approved > 0 || sr.pending > 0 || sr.rejected > 0 || sr.good_qty > 0 || sr.damaged_qty > 0 || sr.pending_qty > 0;
+                if (!hasAny) return `
+                    <div class="text-muted small fw-bold text-uppercase mb-2">SO Returns (Customer Returns)</div>
+                    <div class="text-muted small py-2 px-3" style="background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+                        No customer returns recorded for this product at this site.
+                    </div>`;
+                return `
+                <div class="text-muted small fw-bold text-uppercase mb-2">SO Returns (Customer Returns)</div>
+                <div class="row g-2 mb-2">
+                    <div class="col-4">
+                        <div class="stat-box" style="background:#f0fdf4;">
+                            <div class="lbl" style="color:#16a34a">Restocked (Good)</div>
+                            <div class="val text-success">${sr.good_qty.toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-box" style="background:#fef2f2;">
+                            <div class="lbl" style="color:#dc2626">Written Off (Damaged)</div>
+                            <div class="val text-danger">${sr.damaged_qty.toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-box" style="background:#fffbeb;">
+                            <div class="lbl" style="color:#d97706">Pending Qty</div>
+                            <div class="val" style="color:#d97706">${sr.pending_qty.toLocaleString()}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-1">
+                    <span class="badge" style="background:#dcfce7;color:#166534;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px;">
+                        ✓ ${sr.approved} Approved
+                    </span>
+                    <span class="badge" style="background:#fef9c3;color:#854d0e;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px;">
+                        ⏳ ${sr.pending} Pending
+                    </span>
+                    <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px;">
+                        ✗ ${sr.rejected} Rejected
+                    </span>
+                </div>`;
+            })()}
+        `;
+    } catch (e) {
+        document.getElementById('view-body').innerHTML =
+            `<div class="text-danger text-center py-3">Failed to load detail.</div>`;
+    }
+}
+
+
+function buildPagination(current, total, loadFn, containerId) {
+    if (total <= 1) { document.getElementById(containerId).innerHTML = ''; return; }
+    let h = '';
+    if (current > 1)  h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current-1});return false;">‹</a></li>`;
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="${loadFn}(${i});return false;">${i}</a></li>`;
+        } else if (Math.abs(i - current) === 3) {
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+        }
+    }
+    if (current < total) h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current+1});return false;">›</a></li>`;
+    document.getElementById(containerId).innerHTML = h;
+}
+
+</script>
+
+{% endblock %}

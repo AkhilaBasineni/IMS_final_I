@@ -1,0 +1,933 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .kpi-card { border-radius: 16px !important; transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.10) !important; }
+    .kpi-icon { width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; border-radius: 14px; font-size: 1.5rem; }
+    .kpi-icon.blue   { background: rgba(59,130,246,0.12); color: #3b82f6; }
+    .kpi-icon.green  { background: rgba(16,185,129,0.12); color: #10b981; }
+    .kpi-icon.orange { background: rgba(245,158,11,0.12); color: #f59e0b; }
+    .kpi-icon.purple { background: rgba(139,92,246,0.12); color: #8b5cf6; }
+    .kpi-icon.red    { background: rgba(239,68,68,0.12);  color: #ef4444; }
+    .kpi-icon.cyan   { background: rgba(14,165,233,0.12); color: #0ea5e9; }
+    .kpi-value { font-size: 2rem; font-weight: 800; line-height: 1.1; color: #0f172a; display: block; }
+    .kpi-label { font-size: 0.78rem; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+    .section-card { border-radius: 16px !important; box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important; }
+    .section-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+    .section-title { font-weight: 700; font-size: 0.95rem; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .stock-badge-critical { background: #fee2e2; color: #dc2626; border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; }
+    .stock-badge-ok { background: #dcfce7; color: #16a34a; border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; }
+    .progress-thin { height: 6px; border-radius: 4px; }
+    .site-row:hover { background: #f8fafc; }
+    .greeting-badge { background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; border-radius: 12px; padding: 4px 14px; font-size: 0.78rem; font-weight: 600; }
+    .empty-state { padding: 40px 20px; text-align: center; color: #94a3b8; }
+    .empty-state i { font-size: 2.5rem; margin-bottom: 10px; display: block; }
+    .live-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.7rem; font-weight: 700; color: #10b981; background: #d1fae5; padding: 3px 10px; border-radius: 20px; }
+    .live-dot { width: 7px; height: 7px; background: #10b981; border-radius: 50%; animation: pulse-dot 1.5s infinite; }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
+
+    .dashboard-header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 20px; padding: 24px 28px; color: white; margin-bottom: 24px; position: relative; overflow: hidden; }
+    .dashboard-header::after  { content: ''; position: absolute; right: -30px; top: -30px; width: 180px; height: 180px; background: rgba(59,130,246,0.15); border-radius: 50%; }
+    .dashboard-header::before { content: ''; position: absolute; right: 60px; bottom: -50px; width: 120px; height: 120px; background: rgba(99,102,241,0.12); border-radius: 50%; }
+    .chart-card { border-radius: 16px; border: 1px solid #f1f5f9 !important; box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important; }
+    .chart-card .card-header { background: transparent; border-bottom: 1px solid #f1f5f9; padding: 16px 20px 13px; }
+    .chart-card .card-header h6 { font-weight: 700; font-size: 0.9rem; margin: 0; }
+    .chart-card .card-body { padding: 18px; }
+    .tab-pills .nav-link { font-size: 0.82rem; font-weight: 600; color: #64748b; border-radius: 8px; padding: 5px 12px; }
+    .tab-pills .nav-link.active { background: #4f46e5; color: white; }
+    .kpi-card, .section-card, .chart-card {
+        border: 1.5px solid rgba(79,70,229,0.15) !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+    }
+    .kpi-card:hover, .section-card:hover, .chart-card:hover {
+        border-color: rgba(79,70,229,0.35) !important;
+        box-shadow: 0 8px 24px rgba(79,70,229,0.12) !important;
+    }
+    .section-divider { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin: 28px 0 14px; display: flex; align-items: center; gap: 10px; }
+    .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: #f1f5f9; }
+</style>
+
+<!-- Hero Header -->
+<div class="dashboard-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="greeting-badge"><i class="bi bi-speedometer2 me-1"></i>Manager View</span>
+            </div>
+            <h2 class="mb-1 fw-bold" style="color:white;">Manager Dashboard</h2>
+            <p class="mb-0" style="color:#94a3b8;font-size:0.875rem;" id="state-label">
+                <i class="bi bi-geo-alt me-1"></i>Loading your region...
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+            <button class="btn btn-sm btn-outline-light" onclick="openChangePassword()" style="border-radius:10px;">
+                <i class="bi bi-key me-1"></i>Change Password
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards — 2 rows of 3 -->
+<div class="row g-3 mb-2">
+    <div class="col-6 col-md-4">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon blue"><i class="bi bi-building"></i></div>
+                <div><div class="kpi-label">My Sites</div><div class="kpi-value" id="totalSites">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon green"><i class="bi bi-tags"></i></div>
+                <div><div class="kpi-label">Products</div><div class="kpi-value" id="totalProducts">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon orange"><i class="bi bi-exclamation-triangle"></i></div>
+                <div><div class="kpi-label">Low Stock</div><div class="kpi-value text-warning" id="lowStockCount">—</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-4">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon purple"><i class="bi bi-cart-plus"></i></div>
+                <div><div class="kpi-label">PURCHASE ORDERS</div><div class="kpi-value" id="pendingPOs">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon cyan"><i class="bi bi-cart-check"></i></div>
+                <div><div class="kpi-label">Sales Orders</div><div class="kpi-value" id="totalSalesOrders">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="card kpi-card p-3 border-0 shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon red"><i class="bi bi-x-circle-fill"></i></div>
+                <div><div class="kpi-label">Out of Stock</div><div class="kpi-value text-danger" id="outOfStock">—</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Revenue Analytics ── -->
+<div class="section-divider"><i class="bi bi-cash-stack" style="color:#6366f1;"></i>Revenue Analytics</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-8">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-building me-2" style="color:#6366f1;"></i>Revenue by Sites</h6>
+                <span style="font-size:0.75rem;color:#94a3b8;" id="revSiteCount"></span>
+            </div>
+            <div class="card-body"><div style="position:relative;min-height:200px;"><canvas id="revBySiteChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-4">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-pie-chart-fill me-2" style="color:#f59e0b;"></i>Revenue by Category</h6>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="revByCatChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Stock & Inventory ── -->
+<div class="section-divider"><i class="bi bi-boxes" style="color:#f59e0b;"></i>Stock &amp; Inventory</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-5">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-boxes me-2" style="color:#f59e0b;"></i>Stock Health Overview</h6>
+                <span id="stockLastUpdate" style="font-size:0.72rem;color:#94a3b8;"></span>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center p-3">
+                <div style="width:280px;height:280px;flex-shrink:0;"><canvas id="stockDonutChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-exclamation-octagon-fill me-2" style="color:#ef4444;"></i>Stockout Items by Site</h6>
+                <span style="font-size:0.75rem;color:#94a3b8;" id="stockoutSiteCount"></span>
+            </div>
+            <div class="card-body"><canvas id="stockoutBySiteChart" height="200"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="card section-card">
+            <div class="section-header">
+                <span class="section-title"><i class="bi bi-pie-chart-fill text-info"></i>Stock Valuation by Category</span>
+                <a href="/reports" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:0.78rem;">Full Report</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th style="padding:10px 16px;font-size:0.78rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border:none;">Category</th>
+                            <th style="padding:10px 16px;font-size:0.78rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border:none;">Items</th>
+                            <th style="padding:10px 16px;font-size:0.78rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border:none;">Share</th>
+                            <th class="text-end" style="padding:10px 16px;font-size:0.78rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border:none;">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="val-table"><tr><td colspan="4" class="text-center text-muted py-4">Loading...</td></tr></tbody>
+                    <tfoot>
+                        <tr style="background:#f8fafc;font-weight:700;">
+                            <td colspan="3" style="padding:12px 16px;font-size:0.87rem;">GRAND TOTAL</td>
+                            <td class="text-end text-primary" style="padding:12px 16px;font-size:0.95rem;" id="val-total">₹0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+<!-- ── Logistics & Products ── -->
+<div class="section-divider"><i class="bi bi-truck" style="color:#0ea5e9;"></i>Logistics &amp; Products</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-truck me-2" style="color:#0ea5e9;"></i>Logistics Performance</h6>
+                <ul class="nav tab-pills" style="gap:4px;">
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="showLogisticsView('Status',this);return false;">Status</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="#" onclick="showLogisticsView('Transport',this);return false;">Transport</a></li>
+                </ul>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center p-3">
+                <div id="logisticsStatusView"    style="display:none;width:300px;height:300px;flex-shrink:0;"><canvas id="logisticsStatusChart"></canvas></div>
+                <div id="logisticsTransportView" style="width:100%;"><canvas id="logisticsTransportChart" height="170"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-trophy-fill me-2" style="color:#f59e0b;"></i>Top Performing Products</h6>
+                <span style="font-size:0.75rem;color:#94a3b8;">by Revenue</span>
+            </div>
+            <div class="card-body"><canvas id="topProductsChart" height="220"></canvas></div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Change Password Modal -->
+
+<!-- ═══ EXTENDED ANALYTICS — 8 visualizations ═══════════════ -->
+
+<!-- Row 1: Daily Sales Pattern -->
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-calendar-week me-2" style="color:#6366f1;"></i>Daily Sales Pattern — Peak Sales Days</h6>
+                <span class="refresh-info">Avg revenue &amp; transaction count by day of week</span>
+            </div>
+            <div class="card-body" style="padding-bottom:8px;">
+                <div style="display:flex;gap:16px;margin-bottom:10px;font-size:0.72rem;color:#94a3b8;">
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#6366f1;margin-right:4px;"></span>Avg Revenue (left axis)</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981;margin-right:4px;"></span>Transactions (right axis)</span>
+                </div>
+                <div style="position:relative;height:240px;"><canvas id="dailySalesChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Inventory Turnover + Stock vs Sales -->
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-5">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-arrow-repeat me-2" style="color:#10b981;"></i>Inventory Turnover Rate by Category</h6>
+            </div>
+            <div class="card-body" style="padding-bottom:8px;">
+                <div style="display:flex;gap:12px;margin-bottom:10px;font-size:0.72rem;color:#94a3b8;flex-wrap:wrap;">
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981;margin-right:4px;"></span>Fast</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f59e0b;margin-right:4px;"></span>Medium</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#ef4444;margin-right:4px;"></span>Slow</span>
+                </div>
+                <div style="position:relative;height:220px;"><canvas id="invTurnoverChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-7">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-diagram-2 me-2" style="color:#0ea5e9;"></i>Stock Level vs Sales Volume</h6>
+            </div>
+            <div class="card-body" style="padding-bottom:8px;">
+                <p style="font-size:0.72rem;color:#94a3b8;margin-bottom:8px;">Ending inventory vs revenue — spot overstock &amp; understock products</p>
+                <div style="position:relative;height:220px;"><canvas id="stockVsSalesChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Age Distribution + Gender × Income Spend -->
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-4">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-person-badge me-2" style="color:#6366f1;"></i>Customer Distribution by Age Group</h6>
+            </div>
+            <div class="card-body" style="padding-bottom:8px;">
+                <div style="position:relative;height:230px;"><canvas id="ageDistributionChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-8">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-gender-ambiguous me-2" style="color:#ec4899;"></i>Avg Spend by Gender &amp; Income Bracket</h6>
+            </div>
+            <div class="card-body" style="padding-bottom:8px;">
+                <div id="genderSpendLegend" style="display:flex;gap:12px;margin-bottom:8px;font-size:0.72rem;color:#94a3b8;"></div>
+                <div style="position:relative;height:220px;"><canvas id="genderIncomeSpendChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 4: Age vs Spend Scatter -->
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="card chart-card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-dot me-2" style="color:#8b5cf6;"></i>Customer Age vs Average Spend</h6>
+                <span class="refresh-info">Each dot = 1 customer · Dashed line = trend</span>
+            </div>
+            <div class="card-body" style="padding-bottom:8px;">
+                <div style="position:relative;height:300px;"><canvas id="ageSpendScatterChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 5: Delivery Time + Shipping Volume -->
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-clock-history me-2" style="color:#0ea5e9;"></i>Avg Delivery Time by Site</h6>
+            </div>
+            <div class="card-body" style="padding-bottom:8px;">
+                <div style="display:flex;gap:12px;margin-bottom:8px;font-size:0.72rem;color:#94a3b8;">
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981;margin-right:4px;"></span>Fast ≤2.5d</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f59e0b;margin-right:4px;"></span>Medium</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#ef4444;margin-right:4px;"></span>Slow &gt;4d</span>
+                </div>
+                <div style="position:relative;height:260px;"><canvas id="deliveryTimeChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<div class="modal fade" id="changePwModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px;">
+            <div class="modal-header border-0" style="background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:16px 16px 0 0;">
+                <h6 class="mb-0 text-white"><i class="bi bi-key me-2"></i>Change Password</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3"><label class="form-label small fw-bold">Current Password</label><input type="password" id="pw-old" class="form-control" placeholder="••••••••" style="border-radius:10px;"></div>
+                <div class="mb-3"><label class="form-label small fw-bold">New Password</label><input type="password" id="pw-new" class="form-control" placeholder="••••••••" style="border-radius:10px;"></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Confirm New Password</label><input type="password" id="pw-confirm" class="form-control" placeholder="••••••••" style="border-radius:10px;"></div>
+                <div id="pw-msg" class="small mt-1"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="border-radius:8px;">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitChangePassword()" style="border-radius:8px;">Update Password</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const COLORS  = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#64748b'];
+const PALETTE = ['#6366f1','#10b981','#f59e0b','#ef4444','#0ea5e9','#ec4899','#8b5cf6','#14b8a6','#f97316','#64748b'];
+let charts = {};
+let trendData = null;
+let currentTrendMetric = 'revenue';
+let _managerStateId = null;
+
+const fmtCompact = v => {
+    const n = Number(v || 0);
+    if (n >= 1e7)  return '₹' + (n/1e7).toFixed(1).replace(/\.0$/,'') + 'Cr';
+    if (n >= 1e5)  return '₹' + (n/1e5).toFixed(1).replace(/\.0$/,'') + 'L';
+    if (n >= 1000) return '₹' + (n/1000).toFixed(1).replace(/\.0$/,'') + 'K';
+    return '₹' + n.toFixed(0);
+};
+const fmtN = v => Number(v).toLocaleString('en-US');
+
+// Always pass manager's state_id to analyst endpoints
+function sp() { return _managerStateId ? '?state_id=' + _managerStateId : ''; }
+
+function loadPageData() { loadDashboard(); }
+
+async function loadDashboard() {
+    try {
+        // Fetch manager's state_id first
+        const meRes = await axios.get('/api/auth/me').catch(() => null);
+        if (meRes && meRes.data && meRes.data.success) {
+            _managerStateId = meRes.data.data.state_id || null;
+        }
+
+        const [productsRes, lowStockRes, posRes, warehousesRes, valRes, kpiRes] = await Promise.all([
+            axios.get('/api/products?per_page=1'),
+            axios.get('/api/stock/levels/low-stock'),
+            axios.get('/api/purchase-orders?per_page=1'),
+            axios.get('/api/warehouses?per_page=100'),
+            axios.get('/api/reports/stock-valuation'),
+            axios.get('/api/analytics/analyst/kpi-summary' + sp()).catch(() => null)
+        ]);
+
+        document.getElementById('totalProducts').innerText = productsRes.data.data.total  || 0;
+        document.getElementById('lowStockCount').innerText = lowStockRes.data.data.length || 0;
+        document.getElementById('pendingPOs').innerText    = posRes.data.data.total       || 0;
+        document.getElementById('totalSites').innerText    = warehousesRes.data.data.total || 0;
+
+        if (kpiRes && kpiRes.data && kpiRes.data.success) {
+            const d = kpiRes.data.data;
+            document.getElementById('totalSalesOrders').innerText = fmtN(d.total_sales_orders ?? 0);
+            document.getElementById('outOfStock').innerText       = fmtN(d.out_of_stock_count ?? 0);
+        }
+
+        const sites = warehousesRes.data.data.items || [];
+        if (sites.length > 0 && sites[0].state) {
+            document.getElementById('state-label').innerHTML =
+                `<i class="bi bi-geo-alt me-1"></i>Managing sites in: <strong>${sites[0].state}</strong>`;
+        }
+
+        renderValuation(valRes.data.data);
+
+        await Promise.allSettled([
+            loadTopProducts(), loadRevBySite(), loadRevByCategory(),
+            loadTrend(), loadStockHealth(), loadLogistics(),
+            loadStockoutBySite(), loadPurchaseFreq(), loadTransportMix(),
+        ]);
+
+    } catch (err) { console.error('Dashboard error:', err); }
+}
+
+
+/* ── Valuation ── */
+function renderValuation(valData) {
+    if (!valData || !valData.by_category) return;
+    const total = valData.total_value || 1;
+    document.getElementById('val-table').innerHTML = valData.by_category.map((c, i) => {
+        const pct = total > 0 ? Math.round((c.value / total) * 100) : 0;
+        return `<tr>
+            <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;"><div class="d-flex align-items-center gap-2"><div style="width:10px;height:10px;border-radius:3px;background:${COLORS[i%COLORS.length]};flex-shrink:0;"></div><span style="font-size:0.87rem;">${c.category}</span></div></td>
+            <td style="padding:10px 16px;font-size:0.85rem;border-bottom:1px solid #f1f5f9;">${c.quantity.toLocaleString('en-IN')}</td>
+            <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;"><div class="d-flex align-items-center gap-2"><div class="progress progress-thin flex-grow-1" style="background:#f1f5f9;"><div class="progress-bar" style="width:${pct}%;background:${COLORS[i%COLORS.length]};border-radius:4px;"></div></div><span style="font-size:0.75rem;color:#64748b;min-width:30px;">${pct}%</span></div></td>
+            <td class="text-end" style="padding:10px 16px;font-size:0.87rem;font-weight:600;border-bottom:1px solid #f1f5f9;">₹${c.value.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+        </tr>`;
+    }).join('');
+    document.getElementById('val-total').innerText = `₹${valData.total_value.toLocaleString('en-IN',{minimumFractionDigits:2})}`;
+}
+
+/* ── Top Products ── */
+async function loadTopProducts() {
+    try {
+        const res = await axios.get('/api/analytics/top-products');
+        const data = res.data.data || [];
+        if (!data.length) return;
+        if (charts.topProducts) charts.topProducts.destroy();
+        charts.topProducts = new Chart(document.getElementById('topProductsChart'), {
+            type: 'bar',
+            data: {
+                labels: data.map(p => p.name.length > 22 ? p.name.substring(0,22)+'…' : p.name),
+                datasets: [{ label: 'Revenue (₹)', data: data.map(p => p.revenue), backgroundColor: PALETTE.map(c=>c+'cc'), borderColor: PALETTE, borderWidth:2, borderRadius:8, borderSkipped:false }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true,
+                plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => ' '+fmtCompact(ctx.parsed.x) } } },
+                scales: { x: { ticks: { callback: v=>fmtCompact(v), font:{size:10} }, grid:{color:'#f1f5f9'}, beginAtZero:true }, y: { ticks:{font:{size:10,weight:'600'}}, grid:{display:false} } }
+            }
+        });
+    } catch(e) { console.error('topProducts error', e); }
+}
+
+/* ── Revenue by Sites ── */
+async function loadRevBySite() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/revenue-by-warehouse' + sp());
+        const data = res.data.data || [];
+        const el = document.getElementById('revSiteCount');
+        if (el) el.textContent = data.length + ' sites';
+        if (charts.revBySite) charts.revBySite.destroy();
+        const barColors = data.map((_,i) => PALETTE[i%PALETTE.length]);
+        charts.revBySite = new Chart(document.getElementById('revBySiteChart'), {
+            type: 'bar',
+            data: { labels: data.map(d=>d.warehouse), datasets: [{ label:'Revenue (₹)', data:data.map(d=>d.revenue), backgroundColor:barColors.map(c=>c+'cc'), borderColor:barColors, borderWidth:2, borderRadius:6, borderSkipped:false }] },
+            options: {
+                responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>' '+fmtCompact(ctx.parsed.y)}} },
+                scales:{ x:{ticks:{font:{size:10},maxRotation:40},grid:{display:false}}, y:{ticks:{font:{size:10},callback:v=>fmtCompact(v)},grid:{color:'#f1f5f9'}} }
+            }
+        });
+    } catch(e) { console.error('revBySite error', e); }
+}
+
+/* ── Revenue by Category ── */
+async function loadRevByCategory() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/revenue-by-category' + sp());
+        const data = res.data.data || [];
+        if (charts.revByCat) charts.revByCat.destroy();
+        charts.revByCat = new Chart(document.getElementById('revByCatChart'), {
+            type: 'doughnut',
+            data: { labels:data.map(d=>d.category), datasets:[{ data:data.map(d=>d.revenue), backgroundColor:PALETTE.slice(0,data.length), borderWidth:2, borderColor:'#fff', hoverOffset:6 }] },
+            options: { responsive:true, cutout:'62%', plugins:{ legend:{position:'bottom',labels:{font:{size:10},padding:8,boxWidth:10}}, tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+fmtCompact(ctx.parsed)}} } }
+        });
+    } catch(e) { console.error('revByCat error', e); }
+}
+
+/* ── 12-Month Trend ── */
+async function loadTrend() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/sales-trend-12m' + sp());
+        trendData = res.data.data;
+        renderTrend();
+        renderMgrTrend();
+    } catch(e) { console.error('Trend error', e); }
+}
+function renderTrend() {
+    if (!trendData) return;
+    const metric = currentTrendMetric;
+    const clr = { revenue:'#6366f1', units:'#10b981', returns:'#ef4444' };
+    const lbl = { revenue:'Revenue (₹)', units:'Units Sold', returns:'Returns' };
+    if (charts.trend) charts.trend.destroy();
+    const trendEl = document.getElementById('trendChart');
+    if (!trendEl) return;
+    charts.trend = new Chart(trendEl, {
+        type:'line',
+        data:{ labels:trendData.labels, datasets:[{ label:lbl[metric], data:trendData[metric], borderColor:clr[metric], backgroundColor:clr[metric]+'18', fill:true, tension:0.4, pointRadius:4, pointHoverRadius:6, borderWidth:2.5 }] },
+        options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{display:false}, tooltip:{mode:'index',intersect:false} }, scales:{ y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{callback:v=>metric==='revenue'?'₹'+(v/1000).toFixed(0)+'k':fmtN(v)}}, x:{grid:{display:false}} } }
+    });
+}
+function switchTrend(metric, btn) {
+    currentTrendMetric = metric;
+    document.querySelectorAll('.tab-btn').forEach(b => { b.style.background='transparent'; b.style.color='#94a3b8'; });
+    btn.style.background='#4f46e5'; btn.style.color='white';
+    renderTrend();
+}
+
+let currentMgrTrendMetric = 'revenue';
+function renderMgrTrend() {
+    if (!trendData) return;
+    const metric = currentMgrTrendMetric;
+    const clr = { revenue:'#6366f1', units:'#10b981', returns:'#ef4444' };
+    const lbl = { revenue:'Revenue (₹)', units:'Units Sold', returns:'Returns' };
+    const ctx = document.getElementById('mgrTrendChart');
+    if (!ctx) return;
+    if (charts.mgrTrend) charts.mgrTrend.destroy();
+    charts.mgrTrend = new Chart(ctx, {
+        type:'line',
+        data:{ labels:trendData.labels, datasets:[{ label:lbl[metric], data:trendData[metric], borderColor:clr[metric], backgroundColor:clr[metric]+'18', fill:true, tension:0.4, pointRadius:4, pointHoverRadius:6, borderWidth:2.5 }] },
+        options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{display:false}, tooltip:{mode:'index',intersect:false} }, scales:{ y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{callback:v=>metric==='revenue'?'₹'+(v/1000).toFixed(0)+'k':fmtN(v)}}, x:{grid:{display:false}} } }
+    });
+}
+function switchMgrTrend(metric, btn) {
+    currentMgrTrendMetric = metric;
+    document.querySelectorAll('.mgr-trend-btn').forEach(b => { b.style.background='transparent'; b.style.color='#94a3b8'; b.style.border='1px solid #e2e8f0'; });
+    btn.style.background='#4f46e5'; btn.style.color='white'; btn.style.border='none';
+    renderMgrTrend();
+}
+
+/* ── Stock Health ── */
+async function loadStockHealth() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/stock-health' + sp());
+        const { summary } = res.data.data;
+        document.getElementById('stockLastUpdate').textContent = new Date().toLocaleTimeString();
+        const stockColors = ['#10b981','#f59e0b','#ef4444','#7c3aed'];
+        const stockData   = [summary.healthy, summary.low, summary.critical, summary.out_of_stock];
+        const stockLabels = ['Healthy','Low','Critical','Out of Stock'];
+        if (charts.stockDonut) charts.stockDonut.destroy();
+        charts.stockDonut = new Chart(document.getElementById('stockDonutChart'), {
+            type:'doughnut',
+            data:{ labels:stockLabels, datasets:[{ data:stockData, backgroundColor:stockColors, borderWidth:2, borderColor:'#fff', hoverOffset:8 }] },
+            options:{ responsive:true, maintainAspectRatio:true, cutout:'68%', plugins:{ legend:{ position:'bottom', labels:{ padding:12, font:{size:11}, generateLabels(c){ return c.data.labels.map((l,i)=>({ text:`${l}: ${stockData[i]}`, fillStyle:stockColors[i], strokeStyle:stockColors[i], hidden:false, index:i })); } } }, tooltip:{ callbacks:{ label:ctx=>{ const t=stockData.reduce((a,b)=>a+b,0); return ` ${ctx.label}: ${ctx.raw} (${t>0?(ctx.raw/t*100).toFixed(1):0}%)`; } } } } }
+        });
+    } catch(e) { console.error('stockHealth error', e); }
+}
+
+/* ── Logistics ── */
+async function loadLogistics() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/logistics-performance' + sp());
+        const data = res.data.data;
+        if (charts.logStatus) charts.logStatus.destroy();
+        charts.logStatus = new Chart(document.getElementById('logisticsStatusChart'), {
+            type:'doughnut',
+            data:{ labels:data.status_breakdown.map(d=>d.status), datasets:[{ data:data.status_breakdown.map(d=>d.count), backgroundColor:PALETTE, borderWidth:2, borderColor:'#fff' }] },
+            options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:'bottom',labels:{font:{size:11},padding:8}} }, cutout:'68%' }
+        });
+        if (charts.logTransport) charts.logTransport.destroy();
+        charts.logTransport = new Chart(document.getElementById('logisticsTransportChart'), {
+            type:'bar',
+            data:{ labels:data.transport_types.map(d=>d.type), datasets:[{ label:'Shipments', data:data.transport_types.map(d=>d.count), backgroundColor:PALETTE, borderRadius:8 }] },
+            options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,grid:{color:'#f1f5f9'}}, x:{grid:{display:false}} } }
+        });
+    } catch(e) { console.error('logistics error', e); }
+}
+function showLogisticsView(view, btn) {
+    ['Status','Transport'].forEach(v => { document.getElementById('logistics'+v+'View').style.display='none'; });
+    document.getElementById('logistics'+view+'View').style.display = '';
+    btn.closest('.nav').querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+/* ── Transport Mode Mix ── */
+async function loadTransportMix() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/logistics-performance' + sp());
+        const tData = res.data.data.transport_types || [];
+        if (charts.transportMix) charts.transportMix.destroy();
+        const modeColors = {'Road':'#6366f1','Rail':'#10b981','Air':'#0ea5e9','Sea':'#f59e0b','Courier':'#ec4899','Local':'#8b5cf6'};
+        const labels = tData.map(d=>d.type), values = tData.map(d=>d.count);
+        const total = values.reduce((a,b)=>a+b,0);
+        const colors = labels.map(l=>modeColors[l]||'#94a3b8');
+        charts.transportMix = new Chart(document.getElementById('transportMixChart'), {
+            type:'bar',
+            data:{ labels, datasets:[{ label:'Shipments', data:values, backgroundColor:colors.map(c=>c+'cc'), borderColor:colors, borderWidth:2, borderRadius:8, borderSkipped:false }] },
+            options:{ indexAxis:'y', responsive:true, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>{ const p=total>0?((ctx.parsed.x/total)*100).toFixed(1):0; return ' '+ctx.parsed.x.toLocaleString()+' shipments ('+p+'%)'; }}} }, scales:{ x:{ticks:{font:{size:10}},grid:{color:'#f1f5f9'},beginAtZero:true}, y:{ticks:{font:{size:11,weight:'600'}},grid:{display:false}} } }
+        });
+    } catch(e) { console.error('transportMix error', e); }
+}
+
+/* ── Stockout by Site ── */
+async function loadStockoutBySite() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/stockout-by-site' + sp());
+        const data = res.data.data || [];
+        const el = document.getElementById('stockoutSiteCount');
+        if (el) el.textContent = data.length + ' sites';
+        if (charts.stockoutBySite) charts.stockoutBySite.destroy();
+        const ctx = document.getElementById('stockoutBySiteChart');
+        if (!ctx) return;
+        if (!data.length) { ctx.parentElement.innerHTML='<div class="text-center text-success py-4"><i class="bi bi-check-circle-fill fs-2"></i><p class="mt-2 fw-semibold">No stockouts across your sites!</p></div>'; return; }
+        const labels = data.map(d=>d.site), values = data.map(d=>d.stockouts);
+        const maxV = Math.max(...values);
+        const colors = values.map(v=>{ const r=v/maxV; return r>0.66?'#ef4444':r>0.33?'#f59e0b':'#10b981'; });
+        charts.stockoutBySite = new Chart(ctx, {
+            type:'bar',
+            data:{ labels, datasets:[{ label:'Stockouts', data:values, backgroundColor:colors.map(c=>c+'cc'), borderColor:colors, borderWidth:2, borderRadius:6, borderSkipped:false }] },
+            options:{ responsive:true, plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.parsed.y+' stockout items'}}}, scales:{ x:{ticks:{font:{size:10},maxRotation:35},grid:{display:false}}, y:{ticks:{font:{size:10},stepSize:1},grid:{color:'#f1f5f9'},beginAtZero:true} } }
+        });
+    } catch(e) { console.error('stockoutBySite error', e); }
+}
+
+/* ── Purchase Frequency ── */
+async function loadPurchaseFreq() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/purchase-frequency' + sp());
+        const d = res.data.data || {};
+        if (charts.purchaseFreq) charts.purchaseFreq.destroy();
+        charts.purchaseFreq = new Chart(document.getElementById('purchaseFreqChart'), {
+            type:'bar',
+            data:{ labels:d.labels||[], datasets:[{ label:'Products', data:d.values||[], backgroundColor:'rgba(139,92,246,0.75)', borderColor:'#8b5cf6', borderWidth:2, borderRadius:4, borderSkipped:false, barPercentage:0.95, categoryPercentage:0.95 }] },
+            options:{ responsive:true, plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>'Orders per product: '+items[0].label,label:ctx=>' '+ctx.parsed.y+' products'}}}, scales:{ x:{title:{display:true,text:'Purchase Orders Count',font:{size:10}},ticks:{font:{size:10}},grid:{display:false}}, y:{title:{display:true,text:'No. of Products',font:{size:10}},ticks:{font:{size:10},stepSize:1},grid:{color:'#f1f5f9'},beginAtZero:true} } }
+        });
+    } catch(e) { console.error('purchaseFreq error', e); }
+}
+
+/* ── Change Password ── */
+function openChangePassword() {
+    ['pw-old','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('pw-msg').textContent = '';
+    new bootstrap.Modal(document.getElementById('changePwModal')).show();
+}
+async function submitChangePassword() {
+    const o = document.getElementById('pw-old').value;
+    const n = document.getElementById('pw-new').value;
+    const c = document.getElementById('pw-confirm').value;
+    const m = document.getElementById('pw-msg');
+    if (!o||!n||!c) { m.className='text-danger'; m.textContent='All fields are required.'; return; }
+    if (n!==c) { m.className='text-danger'; m.textContent='Passwords do not match.'; return; }
+    try {
+        const res = await axios.post('/api/auth/change-password', { old_password:o, new_password:n });
+        m.className='text-success'; m.textContent=res.data.message;
+        setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('changePwModal')).hide(), 1500);
+    } catch (err) { m.className='text-danger'; m.textContent=err.response?.data?.message||'Error updating password.'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NEW CHART FUNCTIONS — 12 Missing Visualizations
+// ══════════════════════════════════════════════════════════════
+
+const NP = ['#6366f1','#10b981','#f59e0b','#0ea5e9','#ec4899','#8b5cf6','#ef4444','#14b8a6','#f97316','#64748b'];
+const NSC = { grid:{color:'#f1f5f9'}, border:{display:false} };
+const _mAR = false;
+
+// 1. Daily Sales Pattern
+async function loadDailySalesPattern() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/daily-sales-pattern' + sp());
+    const d = res.data.data;
+    if (!d) return;
+    if (charts.dailySales) charts.dailySales.destroy();
+    charts.dailySales = new Chart(document.getElementById('dailySalesChart'), {
+      type: 'line',
+      data: { labels: d.labels, datasets: [
+        { label: 'Avg Revenue', data: d.avg_revenue, borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.08)', fill: true, tension: 0.4,
+          pointBackgroundColor: '#6366f1', pointRadius: 5, borderWidth: 2.5, yAxisID: 'y' },
+        { label: 'Transactions', data: d.txn_count, borderColor: '#10b981',
+          borderDash: [5,4], tension: 0.4, pointStyle: 'rectRot',
+          pointBackgroundColor: '#10b981', pointRadius: 5, borderWidth: 2, yAxisID: 'y1' }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { ...NSC, position: 'left', ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'k', font: { size: 10 } } },
+          y1: { ...NSC, position: 'right', grid: { drawOnChartArea: false },
+                ticks: { color: '#10b981', font: { size: 10 } } }
+        },
+        tooltip: { mode: 'index', intersect: false }
+      }
+    });
+  } catch(e) { console.error('dailySalesPattern', e); }
+}
+
+// 3. Inventory Turnover
+async function loadInventoryTurnover() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/inventory-turnover' + sp());
+    const d = res.data.data;
+    if (!d) return;
+    const max = Math.max(...d.rates);
+    const cols = d.rates.map(r => r >= max * 0.8 ? '#10b981' : r >= max * 0.5 ? '#f59e0b' : '#ef4444');
+    if (charts.invTurnover) charts.invTurnover.destroy();
+    charts.invTurnover = new Chart(document.getElementById('invTurnoverChart'), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{ data: d.rates, backgroundColor: cols, borderRadius: 7 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => 'Turnover: ' + ctx.raw.toFixed(3) + 'x' } } },
+        scales: { x: { grid: { display: false } },
+          y: { ...NSC, ticks: { callback: v => v.toFixed(2) + 'x', font: { size: 10 } } } }
+      }
+    });
+  } catch(e) { console.error('invTurnover', e); }
+}
+
+// 4. Stock vs Sales Scatter
+async function loadStockVsSales() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/stock-vs-sales' + sp());
+    const pts = res.data.data.points || [];
+    const scatterData = pts.map(p => ({ x: p.stock, y: p.revenue }));
+    if (charts.stockVsSales) charts.stockVsSales.destroy();
+    charts.stockVsSales = new Chart(document.getElementById('stockVsSalesChart'), {
+      type: 'scatter',
+      data: { datasets: [{ label: 'Product', data: scatterData,
+        backgroundColor: 'rgba(14,165,233,0.5)', pointRadius: 6, pointHoverRadius: 9 }] },
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: 12 },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => 'Stock: ' + ctx.raw.x.toFixed(0) + ' | Rev: ₹' + ctx.raw.y.toLocaleString() } } },
+        scales: {
+          x: { ...NSC, title: { display: true, text: 'Ending inventory (units)', font: { size: 10 } },
+               ticks: { font: { size: 10 } } },
+          y: { ...NSC, title: { display: true, text: 'Revenue (₹)', font: { size: 10 } },
+               ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'k', font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) { console.error('stockVsSales', e); }
+}
+
+
+// 7. Age Distribution
+async function loadAgeDistribution() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/customer-age-distribution' + sp());
+    const d = res.data.data;
+    if (!d) return;
+    const cols = ['rgba(99,102,241,0.4)','rgba(99,102,241,0.55)','rgba(99,102,241,0.75)','rgba(99,102,241,0.9)','#f59e0b'];
+    if (charts.ageDist) charts.ageDist.destroy();
+    charts.ageDist = new Chart(document.getElementById('ageDistributionChart'), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{ data: d.counts, backgroundColor: cols, borderRadius: 7 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw + ' customers' } } },
+        scales: { x: { grid: { display: false } }, y: { ...NSC, ticks: { font: { size: 10 } } } }
+      }
+    });
+  } catch(e) { console.error('ageDist', e); }
+}
+
+// 8. Gender × Income Spend (Stacked)
+async function loadGenderIncomeSpend() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/gender-income-spend' + sp());
+    const d = res.data.data;
+    if (!d) return;
+    const gCols = { Female: '#6366f1', Male: '#10b981', Other: '#f59e0b', Unknown: '#94a3b8' };
+    const datasets = d.genders.map(g => ({
+      label: g, data: d.series[g],
+      backgroundColor: gCols[g] || '#94a3b8',
+      borderRadius: 4, stack: 'spend'
+    }));
+    // Build legend
+    const leg = document.getElementById('genderSpendLegend');
+    if (leg) {
+      leg.innerHTML = d.genders.map(g =>
+        `<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${gCols[g]||'#94a3b8'};margin-right:4px;"></span>${g}</span>`
+      ).join('');
+    }
+    if (charts.genderIncomeSpend) charts.genderIncomeSpend.destroy();
+    charts.genderIncomeSpend = new Chart(document.getElementById('genderIncomeSpendChart'), {
+      type: 'bar',
+      data: { labels: d.income_labels, datasets },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { ...NSC, stacked: true, ticks: { callback: v => '₹' + (v/1000).toFixed(1) + 'k', font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) { console.error('genderIncomeSpend', e); }
+}
+
+// 9. Age vs Avg Spend Scatter
+async function loadAgeSpendScatter() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/age-vs-spend' + sp());
+    const pts = res.data.data.points || [];
+    const scatterData = pts.map(p => ({ x: p.x, y: p.y }));
+    // Calculate trend line
+    const n = scatterData.length;
+    if (n < 2) return;
+    const mx = scatterData.reduce((a,p)=>a+p.x,0)/n;
+    const my = scatterData.reduce((a,p)=>a+p.y,0)/n;
+    const slope = scatterData.reduce((a,p)=>a+(p.x-mx)*(p.y-my),0) /
+                  scatterData.reduce((a,p)=>a+(p.x-mx)**2,0);
+    const intercept = my - slope*mx;
+    const xMin = Math.min(...scatterData.map(p=>p.x));
+    const xMax = Math.max(...scatterData.map(p=>p.x));
+    const trendLine = [{ x: xMin, y: Math.round(intercept + slope * xMin) },
+                       { x: xMax, y: Math.round(intercept + slope * xMax) }];
+    if (charts.ageSpendScatter) charts.ageSpendScatter.destroy();
+    charts.ageSpendScatter = new Chart(document.getElementById('ageSpendScatterChart'), {
+      type: 'scatter',
+      data: { datasets: [
+        { label: 'Customer', data: scatterData, backgroundColor: 'rgba(139,92,246,0.55)',
+          pointRadius: 6, pointHoverRadius: 9 },
+        { label: 'Trend', data: trendLine, type: 'line', borderColor: '#8b5cf6',
+          borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, showLine: true }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: 14 },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ?
+            'Age ' + ctx.raw.x + ' | ₹' + ctx.raw.y.toLocaleString() : 'Trend' } } },
+        scales: {
+          x: { ...NSC, title: { display: true, text: 'Customer Age (years)', font: { size: 11 } }, ticks: { font: { size: 10 } } },
+          y: { ...NSC, title: { display: true, text: 'Average Spend (₹)', font: { size: 11 } },
+               ticks: { callback: v => '₹' + (v/1000).toFixed(1) + 'k', font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) { console.error('ageSpendScatter', e); }
+}
+
+// 11. Delivery Time by Site
+async function loadDeliveryTimeNew() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/delivery-time-by-site' + sp());
+    const d = res.data.data;
+    if (!d || !d.labels.length) return;
+    const cols = d.avg_days.map(v => v <= 2.5 ? '#10b981' : v <= 4 ? '#f59e0b' : '#ef4444');
+    if (charts.deliveryTimeNew) charts.deliveryTimeNew.destroy();
+    charts.deliveryTimeNew = new Chart(document.getElementById('deliveryTimeChart'), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{ data: d.avg_days,
+        backgroundColor: cols, borderRadius: 5 }] },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.raw + ' days avg' } } },
+        scales: {
+          x: { ...NSC, min: 0, title: { display: true, text: 'Avg days to delivery', font: { size: 10 } },
+               ticks: { font: { size: 10 } } },
+          y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
+        }
+      }
+    });
+  } catch(e) { console.error('deliveryTimeNew', e); }
+}
+
+// 12. Shipping Volume Trend
+async function loadShippingVolumeTrend() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/shipping-volume-trend' + sp());
+    const d = res.data.data;
+    if (!d || !d.labels.length) return;
+    if (charts.shippingVolTrend) charts.shippingVolTrend.destroy();
+    charts.shippingVolTrend = new Chart(document.getElementById('shippingVolTrendChart'), {
+      type: 'line',
+      data: { labels: d.labels, datasets: [
+        { label: 'Units Shipped', data: d.quantities, borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.08)', fill: true, tension: 0.4,
+          pointBackgroundColor: '#6366f1', pointRadius: 5, borderWidth: 2.5 }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw.toLocaleString() + ' units' } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, autoSkip: false, maxRotation: 35 } },
+          y: { ...NSC, min: 0, ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) { console.error('shippingVolTrend', e); }
+}
+
+// ── Load all new charts (manager — state-scoped via sp()) ────────
+function loadExtendedCharts() {
+    Promise.allSettled([
+        loadDailySalesPattern(), loadInventoryTurnover(), loadStockVsSales(),
+        loadAgeDistribution(), loadGenderIncomeSpend(), loadAgeSpendScatter(),
+        loadDeliveryTimeNew(), loadShippingVolumeTrend()
+    ]);
+}
+
+// Hook into existing loadDashboard
+const _mgrOrigDashboard = loadDashboard;
+loadDashboard = async function() {
+    await _mgrOrigDashboard();
+    loadExtendedCharts();
+};
+
+</script>
+{% endblock %}

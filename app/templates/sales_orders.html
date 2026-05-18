@@ -1,0 +1,1128 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+/* ── Page Header ───────────────────────────────────── */
+.page-header{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:20px;padding:24px 28px;color:white;margin-bottom:24px;position:relative;overflow:hidden;}
+.page-header::after{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;background:rgba(79,70,229,.15);border-radius:50%;pointer-events:none;}
+.page-header::before{content:'';position:absolute;right:60px;bottom:-50px;width:120px;height:120px;background:rgba(99,102,241,.12);border-radius:50%;pointer-events:none;}
+.page-header h2{color:white!important;font-weight:800;margin-bottom:4px;}
+.page-header p.sub{color:#94a3b8!important;font-size:.875rem;margin:0;}
+.header-action{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:12px;padding:10px 20px;color:white;font-weight:600;font-size:.85rem;transition:all .3s;cursor:pointer;display:inline-flex;align-items:center;gap:8px;backdrop-filter:blur(10px);}
+.header-action:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5);transform:translateY(-2px);color:white;text-decoration:none;}
+
+/* ── KPI Cards ─────────────────────────────────────── */
+.kpi-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:1.2rem;}
+.kpi-icon.blue{background:rgba(59,130,246,.12);color:#3b82f6;}
+.kpi-icon.green{background:rgba(16,185,129,.12);color:#10b981;}
+.kpi-icon.yellow{background:rgba(245,158,11,.12);color:#f59e0b;}
+.kpi-icon.purple{background:rgba(139,92,246,.12);color:#8b5cf6;}
+.kpi-icon.red{background:rgba(239,68,68,.12);color:#ef4444;}
+.kpi-value{font-size:1.5rem;font-weight:800;line-height:1.1;color:#0f172a;}
+.kpi-label{font-size:.73rem;color:#64748b;font-weight:500;text-transform:uppercase;letter-spacing:.04em;}
+.section-card{border:1.5px solid rgba(79,70,229,.15)!important;border-radius:14px!important;transition:border-color .2s,box-shadow .2s;}
+.section-card:hover{border-color:rgba(79,70,229,.35)!important;box-shadow:0 8px 24px rgba(79,70,229,.12)!important;}
+
+/* ── Table ──────────────────────────────────────────── */
+.so-row{cursor:pointer;transition:background .15s;}
+.so-row:hover{background:#f8fafc;}
+.id-pill{font-family:monospace;background:#f1f5f9;color:#475569;border-radius:5px;padding:1px 7px;font-size:.78rem;}
+
+/* ── Status Badges ──────────────────────────────────── */
+.badge-draft{background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
+.badge-confirmed{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;}
+.badge-shipped{background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;}
+.badge-cancelled{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;}
+.badge-delivered{background:#ede9fe;color:#5b21b6;border:1px solid #ddd6fe;}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;}
+
+/* ── Modal / Form ───────────────────────────────────── */
+.modal-header-grad{background:linear-gradient(135deg,#1e293b,#4f46e5);color:white;}
+.modal-header-grad .btn-close{filter:invert(1);}
+.form-label{font-size:.82rem;font-weight:600;color:#374151;margin-bottom:4px;}
+.stock-badge{font-size:.72rem;padding:2px 8px;border-radius:10px;font-weight:600;}
+.stock-ok{background:#d1fae5;color:#065f46;}
+.stock-low{background:#fef3c7;color:#92400e;}
+.stock-zero{background:#fee2e2;color:#991b1b;}
+.line-row{background:#f8fafc;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid #e2e8f0;position:relative;}
+.line-row:hover{border-color:#c7d2fe;}
+.remove-line{position:absolute;top:8px;right:10px;background:none;border:none;color:#ef4444;font-size:1rem;cursor:pointer;padding:0;}
+
+/* ── Dispatch form ──────────────────────────────────── */
+.ship-item-row{padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;}
+
+/* ── Scrollbar hide ─────────────────────────────────── */
+@media (min-width: 993px) {
+    .table-responsive{scrollbar-width:none;-ms-overflow-style:none;overflow-x:auto;}
+    .table-responsive::-webkit-scrollbar{display:none;}
+}
+@media (max-width: 992px) {
+    .table-responsive { -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
+}
+
+.filter-btn{
+  background: #5b5ef4;
+  color:white;
+  border:1.5px solid #e2e8f0;
+  border-radius:50px; /* keep pill shape */
+  height:45px;
+  font-size:0.9rem;
+  font-weight:200;
+  white-space:nowrap;
+  transition:all .2s ease;
+}
+
+.filter-btn:hover{
+  background:#eef2ff;
+  border-color:#c7d2fe;
+  color:#4338ca;
+  transform:translateY(-1px);
+}
+
+.filter-btn i{
+  font-size:0.95rem;
+}
+</style>
+
+<!-- Header -->
+<div class="page-header">
+  <div class="d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="mb-1"><i class="bi bi-cart-check-fill me-2"></i>Sales Orders</h2>
+      <p class="sub mb-0">Create, confirm and dispatch customer orders</p>
+    </div>
+    <button class="header-action" id="btn-new-so" style="display:none" onclick="openCreateModal()">
+      <i class="bi bi-plus-lg"></i> New Sales Order
+    </button>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-4">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon blue"><i class="bi bi-receipt"></i></div>
+        <div><div class="kpi-label">Total Orders</div><div class="kpi-value" id="kpi-total">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon green"><i class="bi bi-truck"></i></div>
+        <div><div class="kpi-label">Dispatched</div><div class="kpi-value text-success" id="kpi-shipped">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon green"><i class="bi bi-cash-stack"></i></div>
+        <div><div class="kpi-label">Revenue</div><div class="kpi-value text-success" id="kpi-revenue">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card section-card border-0 mb-3 p-3">
+  <div class="row g-2 align-items-end flex-nowrap">
+    <div class="col-md-3">
+      <input type="text" id="f-search" class="form-control form-control-sm" placeholder="Search SO number, customer…" onkeyup="if(event.key==='Enter')loadData(1)">
+    </div>
+    <div class="col-md-2">
+      <select id="f-customer" class="form-select form-select-sm" onchange="loadData(1)">
+        <option value="">All Customers</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select id="f-status" class="form-select form-select-sm" onchange="loadData(1)">
+        <option value="">All Statuses</option>
+        <option value="Draft">Draft</option>
+        <option value="Confirmed">Confirmed</option>
+        <option value="Shipped">Shipped</option>
+        <option value="Delivered">Delivered (Historical)</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select id="f-site" class="form-select form-select-sm" onchange="loadData(1)">
+        <option value="">All Warehouses</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+  <button 
+    class="btn filter-btn  d-inline-flex align-items-center justify-content-center gap-2"
+    onclick="loadData(1)">
+    
+    <i class="bi bi-funnel"></i>
+    <span>Filter</span>
+    
+  </button>
+</div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card section-card border-0">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" style="font-size:.87rem;">
+      <thead style="background:#f8fafc;">
+        <tr>
+          <th class="px-3 py-3">SO #</th>
+          <th>Customer ID</th>
+          <th>Product ID</th>
+          <th>Warehouse</th>
+          <th class="text-end pe-3">Amount</th>
+          <th class="text-end pe-3 so-action-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="so-table-body">
+        <tr><td colspan="6" class="text-center py-5 text-muted"><i class="bi bi-arrow-repeat spin me-1"></i>Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="px-3 py-2 border-top d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:#f8fafc;">
+    <span id="so-record-count" style="font-size:.8rem;color:#64748b;"></span>
+    <ul class="pagination pagination-sm mb-0" id="so-pagination"></ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CREATE MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="createModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header modal-header-grad">
+        <h5 class="mb-0"><i class="bi bi-cart-plus me-2"></i>New Sales Order</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+
+        <!-- Row 1: Customer + Warehouse + Date -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <label class="form-label">Customer ID</label>
+            <select id="c-customer" class="form-select form-select-sm">
+              <option value="">— Walk-in / No Customer —</option>
+            </select>
+            <div id="c-customer-info" class="mt-1" style="font-size:.78rem;color:#64748b;"></div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Warehouse ID <span class="text-danger">*</span></label>
+            <select id="c-warehouse" class="form-select form-select-sm" onchange="onWarehouseChange()">
+              <option value="">— Select Warehouse —</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Order Date</label>
+            <input type="date" id="c-date" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Shipping Address</label>
+            <input type="text" id="c-addr" class="form-control form-control-sm" placeholder="Optional">
+          </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label class="form-label mb-0">Order Items <span class="text-danger">*</span></label>
+          <button class="btn btn-sm btn-outline-primary" onclick="addLineItem()" id="btn-add-line" disabled>
+            <i class="bi bi-plus-lg me-1"></i>Add Product
+          </button>
+        </div>
+        <div id="line-items-container">
+          <div class="text-muted text-center py-3" style="font-size:.85rem;">
+            <i class="bi bi-arrow-up me-1"></i>Select a warehouse first to load products with stock info
+          </div>
+        </div>
+
+        <!-- Totals + Notes -->
+        <div class="row g-3 mt-2">
+          <div class="col-md-8">
+            <label class="form-label">Notes</label>
+            <textarea id="c-notes" class="form-control form-control-sm" rows="2" placeholder="Optional notes…"></textarea>
+          </div>
+          <div class="col-md-4 d-flex flex-column justify-content-end">
+            <div class="p-3 rounded" style="background:#f1f5f9;border:1.5px solid #e2e8f0;">
+              <div class="d-flex justify-content-between mb-1">
+                <span style="font-size:.85rem;color:#64748b;">Subtotal</span>
+                <span id="c-subtotal" style="font-weight:600;">₹0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mb-1" id="c-discount-row" style="display:none;">
+                <span style="font-size:.85rem;color:#10b981;"><i class="bi bi-tag-fill me-1"></i>Promotion Discount</span>
+                <span id="c-discount" style="font-weight:600;color:#10b981;">-₹0.00</span>
+              </div>
+              <div class="d-flex justify-content-between border-top pt-2 mt-1">
+                <span style="font-size:1rem;font-weight:700;">Grand Total</span>
+                <span id="c-total" style="font-size:1.1rem;font-weight:800;color:#4f46e5;">₹0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreateSO()" id="btn-create-so">
+          <i class="bi bi-save me-1"></i>Save as Draft
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DETAIL / ACTION MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header modal-header-grad">
+        <h5 class="mb-0" id="detail-title"><i class="bi bi-receipt me-2"></i>Sales Order Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="detail-body">
+        <div class="text-center py-4"><i class="bi bi-arrow-repeat spin"></i> Loading…</div>
+      </div>
+      <div class="modal-footer" id="detail-footer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     EMAIL OVERRIDE MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="emailModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header modal-header-grad">
+        <h6 class="mb-0"><i class="bi bi-envelope me-2"></i>Send Email</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <label class="form-label">Recipient Email</label>
+        <input type="email" id="em-email" class="form-control form-control-sm" placeholder="customer@example.com">
+        <div class="form-text">Leave blank to use customer's email on file.</div>
+      </div>
+      <div class="modal-footer p-2">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-sm btn-primary" onclick="doSendEmail()"><i class="bi bi-send me-1"></i>Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DISPATCH MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="shipModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header modal-header-grad">
+        <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Dispatch Order</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Auto-generated Shipment ID -->
+        <div class="mb-3 p-3 rounded" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-tag-fill text-success"></i>
+            <span style="font-size:.8rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em;">Shipment ID</span>
+            <span id="ship-generated-id" class="id-pill ms-1" style="font-size:.9rem;font-weight:700;color:#065f46;background:#d1fae5;"></span>
+          </div>
+        </div>
+        <!-- Transport -->
+        <div class="mb-3">
+          <label class="form-label">Transport <span class="text-danger">*</span></label>
+          <select id="ship-transport" class="form-select form-select-sm">
+            <option value="">— Select Transport —</option>
+            <option value="Rail"><i class="bi bi-train-front"></i> Rail</option>
+            <option value="Truck">Truck</option>
+            <option value="Ship">Ship</option>
+            <option value="Air">Air</option>
+          </select>
+        </div>
+        <p class="text-muted small mb-3">Review quantities. Edit shipped qty if needed.</p>
+        <div id="ship-items-container"></div>
+        <!-- Auto-calculated total -->
+        <div class="mt-3 p-3 rounded d-flex justify-content-between align-items-center" style="background:#f0f9ff;border:1px solid #bae6fd;">
+          <span style="font-size:.82rem;font-weight:600;color:#0369a1;"><i class="bi bi-calculator me-1"></i>Dispatch Total</span>
+          <span id="ship-total-amount" style="font-size:1.1rem;font-weight:800;color:#0369a1;">₹0.00</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success" onclick="doDispatch()"><i class="bi bi-truck me-1"></i>Confirm Dispatch</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin .8s linear infinite;}
+</style>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let allProducts = [];
+let lineItems   = [];
+let activeSoId  = null;
+let emailSoId     = null;
+let emailSoNumber = null;   // SO number for the email being sent (used to update dispatched KPI)
+let emailSoStatus = null;   // SO status at time of email send
+let shipSoId    = null;
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('c-date').value = new Date().toISOString().split('T')[0];
+});
+
+function loadPageData() {
+    const role = localStorage.getItem('user_role');
+    if (['Admin','Manager','Staff'].includes(role)) {
+        document.getElementById('btn-new-so').style.display = 'inline-flex';
+    }
+    // Analyst: view-only — hide all action columns
+    if (role === 'Analyst') {
+        document.querySelectorAll('.so-action-col').forEach(el => el.style.display = 'none');
+    }
+    loadSites();
+    loadCustomers();
+    loadLogisticsSoNumbers().then(() => { loadData(1); loadSummary(); });
+}
+
+// ── LOGISTICS SO NUMBERS CACHE ─────────────────────────────────────────────
+// Holds SO numbers that have at least one logistics record
+let logisticsSoNumbers = new Set();
+
+let totalShipments = 0;  // total logistics records count
+
+async function loadLogisticsSoNumbers() {
+    try {
+        const res = await axios.get('/api/logistics');
+        const records = res.data.data || res.data || [];
+        logisticsSoNumbers = new Set(
+            records
+                .map(r => (r.so_number || '').trim())
+                .filter(Boolean)
+        );
+        totalShipments = records.length;  // total shipments = all logistics records
+    } catch(e) {
+        // If logistics fetch fails, keep the set empty — Track buttons won't show
+        logisticsSoNumbers = new Set();
+        totalShipments = 0;
+    }
+}
+
+// ── SUMMARY ────────────────────────────────────────────────────────────────
+async function loadSummary() {
+    try {
+        const res  = await axios.get('/api/sales-orders/summary');
+        const d    = res.data.data;
+        document.getElementById('kpi-total').textContent   = d.total_orders;
+        document.getElementById('kpi-revenue').textContent = '₹' + d.total_revenue.toLocaleString('en-IN', {maximumFractionDigits:0});
+        // Dispatched = total shipments (all logistics records)
+        document.getElementById('kpi-shipped').textContent = totalShipments;
+    } catch(e) {}
+}
+
+// ── SITES ──────────────────────────────────────────────────────────────────
+async function loadSites() {
+    try {
+        const res = await axios.get('/api/sales-orders/sites');
+        const sel = document.getElementById('f-site');
+        const cw  = document.getElementById('c-warehouse');
+        res.data.data.forEach(s => {
+            sel.innerHTML += `<option value="${s.site_id}">${s.site_id}</option>`;
+            cw.innerHTML  += `<option value="${s.site_id}">${s.site_id}</option>`;
+        });
+    } catch(e) {}
+}
+
+// ── CUSTOMERS ──────────────────────────────────────────────────────────────
+async function loadCustomers() {
+    try {
+        const res = await axios.get('/api/sales-orders/customers');
+        const sel    = document.getElementById('c-customer');
+        const fCust  = document.getElementById('f-customer');
+        res.data.data.forEach(c => {
+            const label = c.customer_id;
+            sel.innerHTML   += `<option value="${c.customer_id}" data-email="${c.email}">${label}</option>`;
+            fCust.innerHTML += `<option value="${c.customer_id}">${label}</option>`;
+        });
+        sel.addEventListener('change', () => {
+            const opt   = sel.options[sel.selectedIndex];
+            const email = opt.dataset.email || '';
+            const info  = document.getElementById('c-customer-info');
+            info.innerHTML = opt.value && email ? `✉ ${email}` : '';
+        });
+    } catch(e) {}
+}
+
+// ── WAREHOUSE CHANGE ───────────────────────────────────────────────────────
+async function onWarehouseChange() {
+    const site_id = document.getElementById('c-warehouse').value;
+    document.getElementById('btn-add-line').disabled = !site_id;
+    lineItems = [];
+    window._activePromos = [];
+    renderLineItems();
+    if (!site_id) return;
+    // Load products with stock for this warehouse
+    try {
+        const res  = await axios.get(`/api/sales-orders/products?site_id=${site_id}`);
+        allProducts = res.data.data;
+    } catch(e) { allProducts = []; }
+    // Load active promotions for this warehouse so discount shows in UI
+    try {
+        const res = await axios.get(`/api/promotions?per_page=9999&site_id=${site_id}`);
+        window._activePromos = res.data.promotions || [];
+    } catch(e) { window._activePromos = []; }
+}
+
+// ── LINE ITEMS ─────────────────────────────────────────────────────────────
+function addLineItem() {
+    lineItems.push({ product_id: '', product_name: '', unit_price: 0, quantity: 1, stock_qty: 0 });
+    renderLineItems();
+}
+
+function removeLineItem(idx) {
+    lineItems.splice(idx, 1);
+    renderLineItems();
+}
+
+function renderLineItems() {
+    const container = document.getElementById('line-items-container');
+    if (!lineItems.length) {
+        container.innerHTML = `<div class="text-muted text-center py-3" style="font-size:.85rem;">
+            No items added yet. Click "Add Product" to begin.</div>`;
+        recalcTotal();
+        return;
+    }
+    container.innerHTML = lineItems.map((item, idx) => {
+        const options = allProducts.map(p => {
+            const stockBadge = p.stock_qty > 10 ? 'stock-ok' : p.stock_qty > 0 ? 'stock-low' : 'stock-zero';
+            return `<option value="${p.product_id}" data-price="${p.unit_price}" data-stock="${p.stock_qty}"
+                ${item.product_id === p.product_id ? 'selected' : ''}>
+                ${p.product_name} (Stock: ${p.stock_qty})</option>`;
+        }).join('');
+
+        const stockClass = item.stock_qty > 10 ? 'stock-ok' : item.stock_qty > 0 ? 'stock-low' : 'stock-zero';
+        const lineTotal  = (item.quantity * item.unit_price).toFixed(2);
+        const stockWarn  = item.product_id && item.quantity > item.stock_qty
+            ? `<div class="text-danger mt-1" style="font-size:.75rem;"><i class="bi bi-exclamation-triangle"></i> Exceeds available stock (${item.stock_qty})</div>` : '';
+
+        return `
+        <div class="line-row" id="line-${idx}">
+          <button class="remove-line" onclick="removeLineItem(${idx})"><i class="bi bi-x-lg"></i></button>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-5">
+              <label class="form-label mb-1" style="font-size:.75rem;">Product</label>
+              <select class="form-select form-select-sm" onchange="onProductSelect(${idx},this)">
+                <option value="">— Select Product —</option>${options}
+              </select>
+              ${item.product_id ? `<span class="stock-badge ${stockClass} mt-1">Stock: ${item.stock_qty}</span>` : ''}
+              ${stockWarn}
+            </div>
+            <div class="col-md-2">
+              <label class="form-label mb-1" style="font-size:.75rem;">Unit Price (₹)</label>
+              <input type="number" class="form-control form-control-sm" min="0" step="0.01"
+                value="${item.unit_price}" onchange="onPriceChange(${idx},this)">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label mb-1" style="font-size:.75rem;">Quantity</label>
+              <input type="number" class="form-control form-control-sm" min="1"
+                value="${item.quantity}" onchange="onQtyChange(${idx},this)">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label mb-1" style="font-size:.75rem;">Line Total</label>
+              <input type="text" class="form-control form-control-sm bg-light" readonly value="₹${lineTotal}">
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+    recalcTotal();
+}
+
+function onProductSelect(idx, sel) {
+    const opt = sel.options[sel.selectedIndex];
+    lineItems[idx].product_id   = opt.value;
+    lineItems[idx].unit_price   = parseFloat(opt.dataset.price || 0);
+    lineItems[idx].stock_qty    = parseInt(opt.dataset.stock  || 0);
+    renderLineItems();
+}
+
+function onPriceChange(idx, el) {
+    lineItems[idx].unit_price = parseFloat(el.value) || 0;
+    recalcTotal();
+    // Update line total cell
+    const row = document.getElementById(`line-${idx}`);
+    if (row) {
+        const total = (lineItems[idx].quantity * lineItems[idx].unit_price).toFixed(2);
+        row.querySelector('input[readonly]').value = '₹' + total;
+    }
+}
+
+function onQtyChange(idx, el) {
+    lineItems[idx].quantity = parseInt(el.value) || 1;
+    recalcTotal();
+    renderLineItems();
+}
+
+function recalcTotal() {
+    const subtotal = lineItems.reduce((s, i) => s + (i.quantity * i.unit_price), 0);
+    const fmtNum   = n => '₹' + n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    document.getElementById('c-subtotal').textContent = fmtNum(subtotal);
+
+    // Calculate promotion discounts client-side using cached promotions
+    const site_id = document.getElementById('c-warehouse').value;
+    const today   = new Date().toISOString().split('T')[0];
+    let totalDiscount = 0;
+
+    if (site_id && window._activePromos && window._activePromos.length) {
+        for (const item of lineItems) {
+            if (!item.product_id) continue;
+            const line  = item.quantity * item.unit_price;
+            const promo = window._activePromos.find(p =>
+                p.product_id === item.product_id &&
+                p.site_id    === site_id &&
+                p.start_date <= today &&
+                p.end_date   >= today
+            );
+            if (promo && promo.discount_amount > 0) {
+                let itemDiscount = 0;
+                if (promo.discount_type === 'Percentage') {
+                    // Percentage: % of line total, capped at line total
+                    itemDiscount = Math.min(line * promo.discount_amount / 100, line);
+                } else if (promo.discount_type === 'Flat') {
+                    // Flat: fixed amount per item × qty, capped at line total
+                    itemDiscount = Math.min(promo.discount_amount * item.quantity, line);
+                }
+                totalDiscount += Math.round(itemDiscount * 100) / 100;
+            }
+        }
+    }
+
+    // Cap total discount at subtotal so grand total never goes negative
+    totalDiscount = Math.min(totalDiscount, subtotal);
+    const grandTotal  = Math.round((subtotal - totalDiscount) * 100) / 100;
+    const discountRow = document.getElementById('c-discount-row');
+    const discountEl  = document.getElementById('c-discount');
+
+    if (totalDiscount > 0) {
+        discountRow.style.display = 'flex';
+        discountEl.textContent    = '-' + fmtNum(totalDiscount);
+    } else {
+        discountRow.style.display = 'none';
+    }
+    document.getElementById('c-total').textContent = fmtNum(grandTotal);
+}
+
+// ── CREATE SO ──────────────────────────────────────────────────────────────
+function openCreateModal() {
+    lineItems = [];
+    allProducts = [];
+    window._activePromos = [];
+    document.getElementById('c-customer').value  = '';
+    document.getElementById('c-warehouse').value = '';
+    document.getElementById('c-addr').value      = '';
+    document.getElementById('c-notes').value     = '';
+    document.getElementById('c-customer-info').innerHTML = '';
+    document.getElementById('btn-add-line').disabled = true;
+    document.getElementById('c-date').value = new Date().toISOString().split('T')[0];
+    renderLineItems();
+    new bootstrap.Modal(document.getElementById('createModal')).show();
+}
+
+async function submitCreateSO() {
+    const warehouse_id = document.getElementById('c-warehouse').value;
+    if (!warehouse_id) return showToast('Select a warehouse', 'error');
+    if (!lineItems.length) return showToast('Add at least one product', 'error');
+
+    for (const item of lineItems) {
+        if (!item.product_id) return showToast('Select a product for all line items', 'error');
+        if (item.quantity <= 0) return showToast('Quantity must be > 0', 'error');
+        if (item.quantity > item.stock_qty)
+            return showToast(`Insufficient stock for one or more items`, 'error');
+    }
+
+    const btn = document.getElementById('btn-create-so');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i>Saving…';
+
+    try {
+        const payload = {
+            warehouse_id:     warehouse_id,
+            customer_id:      document.getElementById('c-customer').value || null,
+            order_date:       document.getElementById('c-date').value,
+            shipping_address: document.getElementById('c-addr').value,
+            notes:            document.getElementById('c-notes').value,
+            items: lineItems.map(i => ({
+                product_id: i.product_id,
+                quantity:   i.quantity,
+                unit_price: i.unit_price,
+            }))
+        };
+        const res = await axios.post('/api/sales-orders', payload);
+        bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+        showToast(res.data.message, 'success');
+        loadData(1);
+        loadLogisticsSoNumbers().then(() => loadSummary());
+    } catch(e) {
+        showToast(e.response?.data?.message || 'Error creating SO', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-1"></i>Save as Draft';
+    }
+}
+
+// ── LIST / PAGINATION ──────────────────────────────────────────────────────
+async function loadData(page = 1) {
+    const search   = document.getElementById('f-search').value.trim();
+    const status   = document.getElementById('f-status').value;
+    const site     = document.getElementById('f-site').value;
+    const customer = document.getElementById('f-customer').value;
+
+    try {
+        const res = await axios.get('/api/sales-orders', {
+            params: { page, search, status, site_id: site, customer_id: customer }
+        });
+        const d = res.data.data;
+        renderTable(d.items, d.total);
+        buildPagination(d.current_page, d.pages, d.total);
+    } catch(e) {
+        document.getElementById('so-table-body').innerHTML =
+            `<tr><td colspan="6" class="text-center text-danger py-4">Failed to load data</td></tr>`;
+    }
+}
+
+function statusBadge(status) {
+    const map = { Draft:'badge-draft', Confirmed:'badge-confirmed', Shipped:'badge-shipped', Delivered:'badge-delivered', Cancelled:'badge-cancelled' };
+    return `<span class="status-badge ${map[status]||''}">${status}</span>`;
+}
+
+function renderTable(items, total) {
+    const tbody   = document.getElementById('so-table-body');
+    const countEl = document.getElementById('so-record-count');
+    if (countEl) {
+        countEl.textContent = total !== undefined
+            ? `${total} shipped order${total !== 1 ? 's' : ''}`
+            : '';
+    }
+    if (!items || !items.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No shipped sales orders found.</td></tr>`;
+        return;
+    }
+    const _soRole = localStorage.getItem('user_role');
+    const _soIsAnalyst = _soRole === 'Analyst';
+    tbody.innerHTML = items.map(so => {
+        // Collect unique product IDs from the SO (stored in so.items if available, else show loading)
+        const productIds = so.product_ids ? so.product_ids.join(', ') : (so.product_id || '—');
+        return `
+        <tr class="so-row" onclick="openDetail(${so.id})">
+          <td class="px-3"><span class="id-pill">${so.so_number}</span></td>
+          <td><span class="id-pill">${so.customer_id || '—'}</span></td>
+          <td><span style="font-size:.78rem;color:#475569;">${productIds}</span></td>
+          <td style="font-size:.85rem;">${so.warehouse_name}</td>
+          <td class="text-end pe-3" style="font-weight:700;color:#4f46e5;">₹${so.total_amount.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+          <td class="text-end pe-3 so-action-col" onclick="event.stopPropagation()">
+            <div class="d-inline-flex gap-1">
+              ${(!_soIsAnalyst && so.status === 'Draft') ? `<button class="btn btn-xs btn-outline-success py-0 px-2" title="Confirm" onclick="confirmSO(${so.id})"><i class="bi bi-check-lg"></i></button>` : ''}
+              ${(!_soIsAnalyst && so.status === 'Confirmed') ? `<button class="btn btn-xs btn-outline-primary py-0 px-2" title="Dispatch" onclick="openShipModal(${so.id})"><i class="bi bi-truck"></i></button>` : ''}
+              ${so.status === 'Shipped'
+                  ? logisticsSoNumbers.has((so.so_number || '').trim())
+                      ? `<button class="btn btn-xs btn-outline-info py-0 px-2" title="Track Logistics" onclick="goToLogistics('${so.customer_id}','${so.so_number}')"><i class="bi bi-geo-alt-fill me-1"></i><span style="font-size:.72rem;"></span></button>`
+                      : `<span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1" style="font-size:.7rem;border-radius:6px;"><i class="bi bi-x-circle me-1"></i>Cancelled</span>`
+                  : so.status === 'Delivered'
+                    ? logisticsSoNumbers.has((so.so_number || '').trim())
+                        ? `<button class="btn btn-xs btn-outline-info py-0 px-2" title="Track Logistics" onclick="goToLogistics('${so.customer_id}','${so.so_number}')"><i class="bi bi-geo-alt-fill me-1"></i><span style="font-size:.72rem;"></span></button>`
+                        : `<span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1" style="font-size:.7rem;border-radius:6px;"><i class="bi bi-x-circle me-1"></i>Cancelled</span>`
+                    : so.status === 'Cancelled'
+                      ? `<span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1" style="font-size:.7rem;border-radius:6px;"><i class="bi bi-x-circle me-1"></i>Cancelled</span>`
+                      : ``
+              }
+              ${(!_soIsAnalyst && so.status === 'Draft') ? `<button class="btn btn-xs btn-outline-danger py-0 px-2" title="Cancel" onclick="cancelSO(${so.id})"><i class="bi bi-x-lg"></i></button>` : ''}
+              <button class="btn btn-xs btn-outline-dark py-0 px-2" title="Download Invoice PDF"
+                onclick="event.stopPropagation();downloadInvoice(${so.id},'${so.so_number}.pdf')">
+                <i class="bi bi-file-earmark-pdf"></i></button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+}
+
+function buildPagination(current, totalPages, totalRecords) {
+    const ul = document.getElementById('so-pagination');
+    if (!ul) return;
+    if (totalPages <= 1) { ul.innerHTML = ''; return; }
+    const perPage = 15;
+    const start   = ((current - 1) * perPage) + 1;
+    const end     = Math.min(current * perPage, totalRecords);
+    let h = `<li class="page-item disabled"><span class="page-link text-muted" style="font-size:.8rem;">${start}–${end} of ${totalRecords}</span></li>`;
+    if (current > 1) h += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${current-1});return false">‹</a></li>`;
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || Math.abs(i - current) <= 2)
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="loadData(${i});return false">${i}</a></li>`;
+        else if (Math.abs(i - current) === 3)
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+    }
+    if (current < totalPages) h += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${current+1});return false">›</a></li>`;
+    ul.innerHTML = h;
+}
+
+// ── DETAIL MODAL ───────────────────────────────────────────────────────────
+async function openDetail(id) {
+    activeSoId = id;
+    document.getElementById('detail-body').innerHTML   = '<div class="text-center py-4"><i class="bi bi-arrow-repeat spin"></i> Loading…</div>';
+    document.getElementById('detail-footer').innerHTML = '';
+    new bootstrap.Modal(document.getElementById('detailModal')).show();
+    try {
+        const res = await axios.get(`/api/sales-orders/${id}`);
+        const so  = res.data.data;
+        document.getElementById('detail-title').innerHTML = `<i class="bi bi-receipt me-2"></i>${so.so_number}`;
+
+        const itemRows = (so.items || []).map(i => `
+            <tr>
+              <td>${i.product_name}</td>
+              <td class="text-center">${i.quantity}</td>
+              <td class="text-center text-muted">${i.shipped_quantity}</td>
+              <td class="text-end">₹${i.unit_price.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+              <td class="text-end fw-bold">₹${i.line_total.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+              <td class="text-center">
+                <span class="stock-badge ${i.stock_available > 10 ? 'stock-ok' : i.stock_available > 0 ? 'stock-low' : 'stock-zero'}">
+                  ${i.stock_available}
+                </span>
+              </td>
+            </tr>`).join('');
+
+        document.getElementById('detail-body').innerHTML = `
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <div class="p-3 rounded" style="background:#f1f5f9;border:1px solid #e2e8f0;">
+                <div class="fw-bold mb-2" style="font-size:.82rem;color:#64748b;text-transform:uppercase;">Customer</div>
+                <div class="fw-bold">${so.customer_name}</div>
+                ${so.customer_email ? `<div class="text-muted small">✉ ${so.customer_email}</div>` : ''}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-3 rounded" style="background:#f1f5f9;border:1px solid #e2e8f0;">
+                <div class="fw-bold mb-2" style="font-size:.82rem;color:#64748b;text-transform:uppercase;">Order Info</div>
+                <div class="d-flex justify-content-between"><span class="text-muted small">Warehouse</span><span class="fw-bold small">${so.warehouse_name}</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted small">Date</span><span class="small">${so.order_date}</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted small">Status</span>${statusBadge(so.status)}</div>
+                <div class="d-flex justify-content-between"><span class="text-muted small">Email</span>
+                  <span>${so.email_sent ? '<i class="bi bi-envelope-check text-success"></i> Sent' : '<i class="bi bi-envelope text-muted"></i> Not sent'}</span></div>
+              </div>
+            </div>
+          </div>
+          ${so.notes ? `<div class="mb-3 small text-muted"><i class="bi bi-sticky me-1"></i>${so.notes}</div>` : ''}
+          <div class="table-responsive">
+            <table class="table table-sm" style="font-size:.85rem;">
+              <thead style="background:#f8fafc;">
+                <tr>
+                  <th>Product</th><th class="text-center">Ordered</th><th class="text-center">Shipped</th>
+                  <th class="text-end">Unit Price</th><th class="text-end">Total</th><th class="text-center">In Stock</th>
+                </tr>
+              </thead>
+              <tbody>${itemRows}</tbody>
+              <tfoot>
+                <tr><td colspan="4" class="text-end fw-bold">Grand Total</td>
+                    <td class="text-end fw-bold text-primary">₹${so.total_amount.toLocaleString('en-IN',{minimumFractionDigits:2})}</td><td></td></tr>
+              </tfoot>
+            </table>
+          </div>`;
+
+        // Footer actions — Analyst is view-only
+        const _detailIsAnalyst = localStorage.getItem('user_role') === 'Analyst';
+        let footer = '<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>';
+        if (!_detailIsAnalyst && so.status === 'Draft') {
+            footer += `<button class="btn btn-success btn-sm ms-2" onclick="confirmSO(${id});bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide()">
+                        <i class="bi bi-check-lg me-1"></i>Confirm Order</button>`;
+            footer += `<button class="btn btn-outline-danger btn-sm ms-2" onclick="cancelSO(${id});bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide()">Cancel Order</button>`;
+        }
+        if (!_detailIsAnalyst && so.status === 'Confirmed') {
+            footer += `<button class="btn btn-primary btn-sm ms-2" onclick="openShipModal(${id});bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide()">
+                        <i class="bi bi-truck me-1"></i>Dispatch</button>`;
+        }
+        if (!_detailIsAnalyst && ['Confirmed','Shipped'].includes(so.status)) {
+            footer += `<button class="btn btn-outline-info btn-sm ms-2" onclick="openEmailModal(${id},'${so.so_number}','${so.status}')">
+                        <i class="bi bi-envelope me-1"></i>Send Email</button>`;
+        }
+        footer += `<button class="btn btn-outline-secondary btn-sm ms-2" title="Download Invoice PDF"
+                      onclick="downloadInvoice(${id},'${so.so_number}.pdf')">
+                      <i class="bi bi-file-earmark-pdf me-1"></i>Download Invoice</button>`;
+        document.getElementById('detail-footer').innerHTML = footer;
+
+    } catch(e) {
+        document.getElementById('detail-body').innerHTML = `<div class="text-danger text-center py-4">Failed to load details.</div>`;
+    }
+}
+
+// ── CONFIRM ────────────────────────────────────────────────────────────────
+async function confirmSO(id) {
+    if (!confirm('Confirm this Sales Order?')) return;
+    try {
+        const res = await axios.post(`/api/sales-orders/${id}/confirm`);
+        showToast(res.data.message + (res.data.email_sent ? ' (Email sent to customer)' : ''), 'success');
+        loadLogisticsSoNumbers().then(() => { loadData(1); loadSummary(); });
+    } catch(e) {
+        showToast(e.response?.data?.message || 'Error confirming order', 'error');
+    }
+}
+
+// ── CANCEL ─────────────────────────────────────────────────────────────────
+async function cancelSO(id) {
+    if (!confirm('Cancel this Sales Order? This cannot be undone.')) return;
+    try {
+        const res = await axios.post(`/api/sales-orders/${id}/cancel`);
+        showToast(res.data.message, 'success');
+        loadLogisticsSoNumbers().then(() => { loadData(1); loadSummary(); });
+    } catch(e) {
+        showToast(e.response?.data?.message || 'Error cancelling', 'error');
+    }
+}
+
+// ── EMAIL ──────────────────────────────────────────────────────────────────
+function openEmailModal(id, soNumber, soStatus) {
+    emailSoId     = id;
+    emailSoNumber = soNumber  || null;
+    emailSoStatus = soStatus  || null;
+    document.getElementById('em-email').value = '';
+    new bootstrap.Modal(document.getElementById('emailModal')).show();
+}
+
+async function doSendEmail() {
+    try {
+        const res = await axios.post(`/api/sales-orders/${emailSoId}/send-email`, {
+            recipient_email: document.getElementById('em-email').value.trim()
+        });
+        bootstrap.Modal.getInstance(document.getElementById('emailModal')).hide();
+        showToast(res.data.message, 'success');
+
+        // ── Increment dispatched KPI when sending dispatch mail for a Shipped order ──
+        if (emailSoNumber && emailSoStatus === 'Shipped') {
+            logisticsSoNumbers.add(emailSoNumber.trim());
+            totalShipments++;
+            document.getElementById('kpi-shipped').textContent = totalShipments;
+        }
+
+        loadLogisticsSoNumbers().then(() => { loadData(1); loadSummary(); });
+    } catch(e) {
+        showToast(e.response?.data?.message || 'Email error', 'error');
+    }
+}
+
+// ── DISPATCH ───────────────────────────────────────────────────────────────
+async function openShipModal(id) {
+    shipSoId = id;
+    document.getElementById('ship-items-container').innerHTML = '<div class="text-center"><i class="bi bi-arrow-repeat spin"></i></div>';
+    document.getElementById('ship-transport').value = '';
+    // Auto-generate shipment ID: SHP-YYYYMMDD-XXXX
+    const now   = new Date();
+    const ymd   = now.getFullYear().toString() +
+                  String(now.getMonth()+1).padStart(2,'0') +
+                  String(now.getDate()).padStart(2,'0');
+    const rand  = Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('ship-generated-id').textContent = `SHP-${ymd}-${rand}`;
+    new bootstrap.Modal(document.getElementById('shipModal')).show();
+    try {
+        const res  = await axios.get(`/api/sales-orders/${id}`);
+        const so   = res.data.data;
+        const html = (so.items || []).map(item => `
+            <div class="ship-item-row">
+              <div class="d-flex justify-content-between align-items-center">
+                <div style="flex:1;">
+                  <div class="fw-bold" style="font-size:.87rem;">${item.product_name}</div>
+                  <div class="text-muted" style="font-size:.78rem;">Ordered: ${item.quantity} &nbsp;|&nbsp;
+                    <span class="stock-badge ${item.stock_available > 0 ? 'stock-ok' : 'stock-zero'}">
+                      Stock: ${item.stock_available}
+                    </span>
+                    &nbsp;|&nbsp; ₹${parseFloat(item.unit_price).toLocaleString('en-IN',{minimumFractionDigits:2})} / unit
+                  </div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                  <div style="width:100px;">
+                    <label style="font-size:.75rem;color:#64748b;">Ship Qty</label>
+                    <input type="number" class="form-control form-control-sm text-center ship-qty"
+                      data-product="${item.product_id}"
+                      data-price="${item.unit_price}"
+                      min="0" max="${item.stock_available}"
+                      value="${Math.min(item.quantity, item.stock_available)}"
+                      oninput="recalcShipTotal()">
+                  </div>
+                  <div style="width:90px;text-align:right;">
+                    <label style="font-size:.75rem;color:#64748b;">Amount</label>
+                    <div class="ship-line-amount fw-bold" style="font-size:.87rem;color:#4f46e5;">
+                      ₹${(Math.min(item.quantity, item.stock_available) * parseFloat(item.unit_price)).toLocaleString('en-IN',{minimumFractionDigits:2})}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>`).join('');
+        document.getElementById('ship-items-container').innerHTML = html || '<p class="text-muted">No items found.</p>';
+        recalcShipTotal();
+    } catch(e) {
+        document.getElementById('ship-items-container').innerHTML = '<div class="text-danger">Error loading items.</div>';
+    }
+}
+
+function recalcShipTotal() {
+    let total = 0;
+    document.querySelectorAll('.ship-qty').forEach(inp => {
+        const qty   = parseInt(inp.value) || 0;
+        const price = parseFloat(inp.dataset.price) || 0;
+        const amount = qty * price;
+        total += amount;
+        // update the sibling .ship-line-amount
+        const amountEl = inp.closest('.ship-item-row')?.querySelector('.ship-line-amount');
+        if (amountEl) amountEl.textContent = '₹' + amount.toLocaleString('en-IN',{minimumFractionDigits:2});
+    });
+    const el = document.getElementById('ship-total-amount');
+    if (el) el.textContent = '₹' + total.toLocaleString('en-IN',{minimumFractionDigits:2});
+}
+
+async function doDispatch() {
+    const transport = document.getElementById('ship-transport').value;
+    if (!transport) return showToast('Please select a transport method', 'error');
+    const inputs = document.querySelectorAll('.ship-qty');
+    const items  = [];
+    inputs.forEach(inp => {
+        const qty = parseInt(inp.value) || 0;
+        if (qty > 0) items.push({ product_id: inp.dataset.product, shipped_quantity: qty });
+    });
+    if (!items.length) return showToast('No items to dispatch', 'error');
+    try {
+        const res = await axios.post(`/api/sales-orders/${shipSoId}/ship`, {
+            items,
+            transport: transport,
+            shipment_id: document.getElementById('ship-generated-id').textContent
+        });
+        bootstrap.Modal.getInstance(document.getElementById('shipModal')).hide();
+        showToast(res.data.message + (res.data.email_sent ? ' (Dispatch email sent)' : ''), 'success');
+        // Optimistically add this SO to the dispatched set so the KPI updates instantly,
+        // even before the logistics API reload completes.
+        if (res.data.so_number) { logisticsSoNumbers.add(res.data.so_number.trim()); totalShipments++; }
+        loadSummary();   // reflect the optimistic increment right away
+        loadLogisticsSoNumbers().then(() => { loadData(1); loadSummary(); });
+    } catch(e) {
+        showToast(e.response?.data?.message || 'Dispatch error', 'error');
+    }
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+    const existing = document.querySelector('.so-toast');
+    if (existing) existing.remove();
+    const t = document.createElement('div');
+    t.className = 'so-toast';
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;
+        color:white;font-size:.87rem;font-weight:600;display:flex;align-items:center;gap:10px;
+        background:${type==='success'?'#10b981':'#ef4444'};box-shadow:0 4px 20px rgba(0,0,0,.15);`;
+    t.innerHTML = `<i class="bi bi-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${msg}`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4500);
+}
+
+// ── TRACK LOGISTICS — redirect to logistics page ───────────────────────────
+function goToLogistics(customerId, soNumber) {
+    window.location.href = '/logistics#so=' + encodeURIComponent(soNumber);
+}
+
+// ── CUSTOMER LOGISTICS TRACKING ────────────────────────────────────────────
+async function viewCustomerLogistics(customerId, soNumber) {
+    const modal = new bootstrap.Modal(document.getElementById('logisticsModal'));
+    const body  = document.getElementById('logistics-modal-body');
+    document.getElementById('logistics-modal-title').textContent = `Logistics for ${soNumber} · Customer ${customerId}`;
+    body.innerHTML = `<div class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-1"></i> Loading shipments…</div>`;
+    modal.show();
+    try {
+        const res  = await axios.get('/api/logistics');
+        const all  = res.data.data || [];
+        // Filter records that belong to this specific Sales Order only
+        const soNum = (soNumber || '').trim();
+        const filtered = all.filter(r => {
+            const rSoNum    = (r.so_number || '').trim();
+            const rShipId   = (r.shipment_id || '').trim();
+            // Match by enriched so_number field OR by shipment_id containing the SO number
+            return (soNum && rSoNum === soNum) ||
+                   (soNum && rShipId.includes(soNum));
+        });
+        const statCls = { Delivered: 'text-success', Delayed: 'text-warning', Cancelled: 'text-danger', 'In Transit': 'text-primary' };
+        const transportIcon = { Rail:'bi-train-front', Truck:'bi-truck', Ship:'bi-ship', Air:'bi-airplane' };
+        if (!filtered.length) {
+            body.innerHTML = `<p class="text-muted text-center py-3">No shipment records found for <strong>${soNum}</strong>.</p>
+              <div class="text-center"><a href="/logistics" class="btn btn-sm btn-outline-primary"><i class="bi bi-truck me-1"></i>Open Logistics Page</a></div>`;
+            return;
+        }
+        body.innerHTML = `
+          <div class="mb-2 small text-muted">${filtered.length} shipment record${filtered.length !== 1 ? 's' : ''} found for <strong>${soNum}</strong></div>
+          <div class="table-responsive" style="max-height:380px;overflow-y:auto;">
+            <table class="table table-sm table-hover mb-0" style="font-size:.82rem;">
+              <thead style="position:sticky;top:0;background:#f8fafc;">
+                <tr>
+                  <th>Shipment ID</th><th>Site</th><th>Product</th>
+                  <th class="text-center">Qty</th><th>Date</th>
+                  <th class="text-center">Status</th><th class="text-center">Transport</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filtered.map(r => `
+                  <tr>
+                    <td><span class="id-pill">${r.shipment_id}</span></td>
+                    <td><span class="id-pill">${r.site_id}</span></td>
+                    <td><span class="id-pill">${r.product_id}</span></td>
+                    <td class="text-center fw-semibold">${(r.quantity||0).toLocaleString()}</td>
+                    <td style="color:#64748b;">${r.shipment_date}</td>
+                    <td class="text-center"><span class="fw-semibold ${statCls[r.delivery_status]||''}">${r.delivery_status}</span></td>
+                    <td class="text-center"><i class="bi ${transportIcon[r.transportation_type]||'bi-box'} me-1"></i>${r.transportation_type}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-3 text-end">
+            <a href="/logistics" class="btn btn-sm btn-outline-primary"><i class="bi bi-truck me-1"></i>Open Logistics Page</a>
+          </div>`;
+    } catch(e) {
+        body.innerHTML = '<p class="text-danger text-center py-3">Failed to load logistics data.</p>';
+    }
+}
+
+async function downloadInvoice(id, filename) {
+    try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`/api/sales-orders/${id}/invoice`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) { alert('Failed to download invoice.'); return; }
+        const blob = await response.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) { alert('Error downloading invoice: ' + e.message); }
+}
+</script>
+
+<!-- ── LOGISTICS TRACKING MODAL ─────────────────────────────────────────── -->
+<div class="modal fade" id="logisticsModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header" style="background:linear-gradient(135deg,#0f172a,#0ea5e9);color:white;">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-geo-alt-fill me-2"></i><span id="logistics-modal-title">Logistics Tracking</span></h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="logistics-modal-body"></div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

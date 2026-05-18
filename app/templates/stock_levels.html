@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 24px 28px; color: white;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .page-header::after {
+        content: ''; position: absolute; right: -30px; top: -30px;
+        width: 180px; height: 180px; background: rgba(79,70,229,0.15);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header::before {
+        content: ''; position: absolute; right: 60px; bottom: -50px;
+        width: 120px; height: 120px; background: rgba(99,102,241,0.12);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header h2 { color: white !important; font-weight: 800; margin-bottom: 4px; }
+    .page-header h2 i { opacity: 0.85; }
+    .page-header small, .page-header p.sub { color: #94a3b8 !important; font-size: 0.875rem; margin: 0; }
+    .page-header .header-action { 
+        background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 10px 20px; color: white; font-weight: 600;
+        font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+        position: relative; z-index: 10;
+    }
+    .page-header .header-action:hover {
+        background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5);
+        transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        color: white; text-decoration: none;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-stack me-2"></i>Real-Time Stock Levels</h2>
+            <p class="sub mb-0">Live inventory across all warehouses</p>
+        </div>
+        <button class="header-action" onclick="loadData(1)"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </div>
+</div>
+
+<!-- Advanced Filter Card -->
+<div class="advanced-filter-card">
+    <div class="filter-title">
+        <i class="bi bi-funnel-fill"></i>
+        <span>Filter & Search</span>
+    </div>
+    <div class="filter-input-group">
+        <div class="filter-input-wrapper search-input-wrapper">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="s-search" class="advanced-input" 
+                placeholder="Search by product name, ID, category..." 
+                onkeyup="if(event.key==='Enter') loadData(1)">
+        </div>
+        <div class="filter-input-wrapper">
+            <button class="btn-advanced-primary" onclick="loadData(1)">
+                <i class="bi bi-search"></i> Search
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Table -->
+<div class="advanced-table-container">
+    <table class="advanced-table advanced-table-striped">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Warehouse Location</th>
+                <th>Current Quantity</th>
+            </tr>
+        </thead>
+        <tbody id="stock-table">
+            <tr><td colspan="3" class="text-center py-4">Loading stock data...</td></tr>
+        </tbody>
+    </table>
+    
+    <!-- Pagination -->
+    <ul class="pagination pagination-sm mb-0" id="stock-pagination"></ul>
+</div>
+
+<script>
+let _currentPage = 1;
+let _totalPages  = 1;
+
+async function loadData(page = 1) {
+    const s = document.getElementById('s-search').value;
+    try {
+        const res = await axios.get(`/api/stock/levels?search=${encodeURIComponent(s)}&page=${page}`);
+        const data = res.data.data;
+        const items = data.items;
+        _currentPage = data.current_page;
+        _totalPages  = data.pages;
+
+        if (items.length === 0) {
+            document.getElementById('stock-table').innerHTML = 
+                '<tr><td colspan="3" class="text-center py-4 text-muted">No stock records found.</td></tr>';
+            document.getElementById('stock-pagination').innerHTML = '';
+            return;
+        }
+
+        document.getElementById('stock-table').innerHTML = items.map(item => `
+            <tr>
+                <td>
+                    <strong>${item.product_name}</strong>
+                    <br><small class="text-muted">${item.product_id}</small>
+                </td>
+                <td><span class="badge-advanced badge-info">${item.warehouse_name}</span></td>
+                <td>
+                    <span class="badge-advanced ${item.quantity <= item.reorder_point ? 'badge-danger' : 'badge-success'}">
+                        ${item.quantity} units
+                    </span>
+                    ${item.quantity <= item.reorder_point ? `<small class="text-danger d-block">Low stock! Reorder at ${item.reorder_point}</small>` : ''}
+                </td>
+            </tr>
+        `).join('');
+
+        // Render pagination
+        renderPagination(_currentPage, _totalPages);
+
+    } catch(e) {
+        console.error('Error loading stock:', e);
+        document.getElementById('stock-table').innerHTML = 
+            '<tr><td colspan="3" class="text-center text-danger py-4">Failed to load data.</td></tr>';
+    }
+}
+
+function renderPagination(current, total) {
+    buildPagination(current, total, 'loadData', 'stock-pagination');
+}
+
+function loadPageData() { loadData(1); }
+
+function buildPagination(current, total, loadFn, containerId) {
+    if (total <= 1) { document.getElementById(containerId).innerHTML = ''; return; }
+    let h = '';
+    if (current > 1)  h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current-1});return false;">‹</a></li>`;
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="${loadFn}(${i});return false;">${i}</a></li>`;
+        } else if (Math.abs(i - current) === 3) {
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+        }
+    }
+    if (current < total) h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current+1});return false;">›</a></li>`;
+    document.getElementById(containerId).innerHTML = h;
+}
+
+</script>
+{% endblock %}

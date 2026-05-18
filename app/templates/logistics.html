@@ -1,0 +1,823 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .section-card { border-radius:14px !important; border:none !important; box-shadow:0 2px 12px rgba(0,0,0,0.06) !important; }
+    .kpi-icon { width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:1.2rem; }
+    .kpi-icon.blue   { background:rgba(59,130,246,0.12);  color:#3b82f6; }
+    .kpi-icon.green  { background:rgba(16,185,129,0.12);  color:#10b981; }
+    .kpi-icon.red    { background:rgba(239,68,68,0.12);   color:#ef4444; }
+    .kpi-icon.orange { background:rgba(245,158,11,0.12);  color:#f59e0b; }
+    .kpi-icon.purple { background:rgba(139,92,246,0.12);  color:#8b5cf6; }
+    .kpi-value { font-size:1.5rem; font-weight:800; line-height:1.1; color:#0f172a; }
+    .kpi-label { font-size:0.73rem; color:#64748b; font-weight:500; text-transform:uppercase; letter-spacing:.04em; }
+    .id-pill   { font-family:monospace; background:#f1f5f9; color:#475569; border-radius:5px; padding:1px 7px; font-size:0.78rem; }
+    .status-badge { font-size:0.75rem; padding:3px 10px; border-radius:20px; font-weight:600; }
+    .status-Delivered   { background:#dcfce7; color:#16a34a; }
+    .status-Delayed     { background:#fef9c3; color:#b45309; }
+    .status-Cancelled   { background:#fee2e2; color:#dc2626; }
+    .status-In-Transit  { background:#dbeafe; color:#1d4ed8; }
+    .transport-badge  { font-size:0.72rem; padding:2px 8px; border-radius:5px; font-weight:600; background:#f1f5f9; color:#475569; }
+    .detail-panel { display:none; background:#f8fafc; border-top:1px solid #e2e8f0; }
+    .stat-box  { background:#fff; border-radius:10px; padding:10px 14px; text-align:center; border:1px solid #e2e8f0; }
+    .stat-box .val { font-size:1.2rem; font-weight:800; }
+    .stat-box .lbl { font-size:0.7rem; color:#64748b; text-transform:uppercase; letter-spacing:.04em; }
+    tr.expandable { cursor:pointer; }
+    tr.expandable:hover td { background:#f0f9ff !important; }
+
+    /* ── SO Highlight ─────────────────────────────────────────────── */
+    @keyframes soGlow {
+        0%   { background:#fef08a; box-shadow: inset 0 0 0 2px #f59e0b; }
+        40%  { background:#fde68a; box-shadow: inset 0 0 0 3px #f59e0b, 0 0 18px rgba(245,158,11,.35); }
+        100% { background:#fef9c3; box-shadow: inset 0 0 0 2px #fbbf24; }
+    }
+    @keyframes soFadeOut {
+        0%   { background:#fef9c3; box-shadow: inset 0 0 0 2px #fbbf24; opacity:1; }
+        100% { background:transparent; box-shadow:none; opacity:1; }
+    }
+    tr.so-highlight td {
+        animation: soGlow 0.6s ease forwards;
+        position: relative;
+    }
+    tr.so-highlight-fade td {
+        animation: soFadeOut 1.2s ease forwards;
+    }
+    tr.so-highlight td:first-child::before {
+        content: '';
+        position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+        background: #f59e0b; border-radius: 0 2px 2px 0;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 24px 28px; color: white;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .page-header::after {
+        content: ''; position: absolute; right: -30px; top: -30px;
+        width: 180px; height: 180px; background: rgba(79,70,229,0.15);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header::before {
+        content: ''; position: absolute; right: 60px; bottom: -50px;
+        width: 120px; height: 120px; background: rgba(99,102,241,0.12);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header h2 { color: white !important; font-weight: 800; margin-bottom: 4px; }
+    .page-header h2 i { opacity: 0.85; }
+    .page-header small, .page-header p.sub { color: #94a3b8 !important; font-size: 0.875rem; margin: 0; }
+    .page-header .header-action { 
+        background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 10px 20px; color: white; font-weight: 600;
+        font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+        position: relative; z-index: 10;
+    }
+    .page-header .header-action:hover {
+        background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5);
+        transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        color: white; text-decoration: none;
+    }
+
+    /* KPI Card borders */
+    .kpi-card, .section-card {
+        border: 1.5px solid rgba(79,70,229,0.15) !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+    }
+    .kpi-card:hover, .section-card:hover {
+        border-color: rgba(79,70,229,0.35) !important;
+        box-shadow: 0 8px 24px rgba(79,70,229,0.12) !important;
+    }
+    .kpi-value { display: block; }
+</style>
+
+<!-- Header -->
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-truck-front-fill me-2"></i>Logistics</h2>
+            <p class="sub mb-0">Shipment tracking and delivery status overview</p>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card section-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon blue"><i class="bi bi-box-seam"></i></div>
+                <div><div class="kpi-label">Total Shipments</div><div class="kpi-value" id="kpi-total">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card section-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon green"><i class="bi bi-check-circle"></i></div>
+                <div><div class="kpi-label">Delivered</div><div class="kpi-value" id="kpi-delivered">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card section-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon orange"><i class="bi bi-clock-history"></i></div>
+                <div><div class="kpi-label">Delayed</div><div class="kpi-value" id="kpi-delayed">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card section-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon red"><i class="bi bi-x-circle"></i></div>
+                <div><div class="kpi-label">Cancelled</div><div class="kpi-value" id="kpi-cancelled">—</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card section-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon purple"><i class="bi bi-stack"></i></div>
+                <div><div class="kpi-label">Total Units Shipped</div><div class="kpi-value" id="kpi-units">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card section-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon blue"><i class="bi bi-geo-alt"></i></div>
+                <div><div class="kpi-label">Unique Sites</div><div class="kpi-value" id="kpi-sites">—</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card section-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icon green"><i class="bi bi-graph-up-arrow"></i></div>
+                <div><div class="kpi-label">Avg Qty / Shipment</div><div class="kpi-value" id="kpi-avg-qty">—</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card section-card p-3 mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="f-search" class="form-control border-start-0"
+                    placeholder="Shipment ID, Site, Product..."
+                    onkeyup="if(event.key==='Enter') applyFilters()">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <select id="f-status" class="form-select" onchange="applyFilters()">
+                <option value="">All Statuses</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Delayed">Delayed</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="In Transit">In Transit</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select id="f-transport" class="form-select" onchange="applyFilters()">
+                <option value="">Transport</option>
+                <option value="Rail">Rail</option>
+                <option value="Truck">Truck</option>
+                <option value="Ship">Ship</option>
+                <option value="Air">Air</option>
+            </select>
+        </div>
+        <div class="col-md-1">
+            <select id="f-site" class="form-select" onchange="applyFilters()">
+                <option value="">Site</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <div class="d-flex gap-2">
+                <button 
+    class="btn flex-fill fw-semibold d-inline-flex align-items-center justify-content-center gap-2"
+    onclick="applyFilters()"
+    style="
+        background:#5b5ef4;
+        color:#fff;
+        border:none;
+        border-radius:50px;
+        height:45px;
+        font-size:0.97rem;
+        box-shadow:0 2px 8px rgba(91,94,244,0.18);
+        white-space:nowrap;
+    ">
+    <i class="bi bi-funnel"></i>
+    <span>Filter</span>
+</button>
+                <button 
+    class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center"
+    onclick="clearFilters()"
+    style="
+        border-radius:50px;
+        height:45px;
+        width:45px;
+        padding:0;
+    ">
+    <i class="bi bi-x-lg"></i>
+</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card section-card">
+    <div class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom">
+        <span class="fw-semibold text-secondary small" id="result-count">Loading...</span>
+        <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Click <i class="bi bi-eye-fill text-info"></i> to view shipment details</span>
+    </div>
+   <div class="advanced-table-container" style="overflow-x: auto; border-radius: 0;">
+    <table class="advanced-table advanced-table-striped" style="table-layout: auto; min-width: 900px;">
+            <thead class="bg-light">
+                <tr>
+                    <th style="width:40px">#</th>
+                    <th>Shipment ID</th>
+                    <th>SO ID</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center">Transport</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody id="tbl-body">
+                <tr><td colspan="6" class="text-center py-5 text-muted">Loading shipments...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <!-- Pagination -->
+    <div class="d-flex justify-content-between align-items-center px-4 py-3 border-top">
+        <button class="btn btn-sm btn-outline-secondary" id="btn-prev" onclick="changePage(-1)" disabled>
+            <i class="bi bi-chevron-left"></i> Prev
+        </button>
+        <span class="text-muted small" id="page-info">Page 1</span>
+        <button class="btn btn-sm btn-outline-secondary" id="btn-next" onclick="changePage(1)">
+            Next <i class="bi bi-chevron-right"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+let allData     = [];
+let filtered    = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+
+function openEditModal(shipmentId, currentStatus) {
+    if (currentStatus === 'Delivered' || currentStatus === 'Cancelled') {
+        alert(`This shipment is already ${currentStatus} and cannot be edited.`);
+        return;
+    }
+    document.getElementById('editShipmentId').value = shipmentId;
+    document.getElementById('editShipmentIdLabel').textContent = shipmentId;
+    // Always reset all options first to avoid stale state from previous opens
+    document.querySelectorAll('input[name="editStatus"]').forEach(r => {
+        r.checked = false;
+        const label = r.closest('.edit-status-option');
+        if (label) label.classList.remove('selected');
+    });
+    // Default to "In Transit" for newly dispatched shipments with no status set
+    const effectiveStatus = (currentStatus && currentStatus.trim()) ? currentStatus.trim() : 'In Transit';
+    const mapped = effectiveStatus === 'Delivered' ? 'Received' : effectiveStatus;
+    document.querySelectorAll('input[name="editStatus"]').forEach(r => {
+        if (r.value === mapped) {
+            r.checked = true;
+            const label = r.closest('.edit-status-option');
+            if (label) label.classList.add('selected');
+        }
+    });
+    // Clear previous result
+    document.getElementById('editModalResult').innerHTML = '';
+    document.getElementById('editSaveBtn').disabled = false;
+    new bootstrap.Modal(document.getElementById('editStatusModal')).show();
+}
+
+async function saveEditStatus() {
+    const shipmentId = document.getElementById('editShipmentId').value;
+    const selected = document.querySelector('input[name="editStatus"]:checked');
+    if (!selected) { 
+        document.getElementById('editModalResult').innerHTML = '<div class="alert alert-warning py-2 mb-0">Please select a status.</div>';
+        return; 
+    }
+    const displayStatus = selected.value;
+    const apiStatus = displayStatus === 'Received' ? 'Delivered' : displayStatus;
+    const btn = document.getElementById('editSaveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+    try {
+        const res = await axios.put(`/api/logistics/${shipmentId}/status`, { delivery_status: apiStatus });
+        if (res.data.success) {
+            let html = `<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle-fill me-1"></i>Status updated to <strong>${displayStatus}</strong>.`;
+            if (res.data.inventory_update) {
+                html += `<br><small>${res.data.inventory_update}</small>`;
+            }
+            html += '</div>';
+            document.getElementById('editModalResult').innerHTML = html;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Changes';
+            await loadPageData();
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editStatusModal'));
+                if (modal) modal.hide();
+            }, 1800);
+        } else {
+            document.getElementById('editModalResult').innerHTML = `<div class="alert alert-danger py-2 mb-0">${res.data.message || 'Update failed'}</div>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Changes';
+        }
+    } catch(e) {
+        document.getElementById('editModalResult').innerHTML = `<div class="alert alert-danger py-2 mb-0">${e.response?.data?.message || 'Update failed'}</div>`;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Changes';
+    }
+}
+
+function showStatusToast(html, type) {
+    let container = document.getElementById('logToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'logToastContainer';
+        container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} shadow d-flex align-items-start gap-2 mb-0`;
+    toast.style.cssText = 'min-width:280px;max-width:360px;animation:fadeInUp .3s ease;';
+    toast.innerHTML = `<i class="bi bi-${type==='success'?'check-circle-fill':'exclamation-triangle-fill'} mt-1"></i><div>${html}</div>`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity='0'; toast.style.transition='opacity .4s'; setTimeout(()=>toast.remove(), 400); }, 4000);
+}
+
+async function loadPageData() {
+    try {
+        const [logRes] = await Promise.all([
+            axios.get('/api/logistics')
+        ]);
+        allData = logRes.data.data || [];
+        populateSiteFilter();
+        computeKPIs(allData);
+        applyFilters();
+        highlightFromHash();
+    } catch (e) {
+        document.getElementById('tbl-body').innerHTML =
+            `<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load logistics data.</td></tr>`;
+    }
+}
+
+
+function populateSiteFilter() {
+    const sites = [...new Set(allData.map(r => r.site_id))].sort();
+    const sel = document.getElementById('f-site');
+    const currentVal = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    sites.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s; o.textContent = s;
+        sel.appendChild(o);
+    });
+    sel.value = currentVal;
+}
+
+function computeKPIs(data) {
+    const total     = data.length;
+    const delivered = data.filter(r => r.delivery_status === 'Delivered').length;
+    const delayed   = data.filter(r => r.delivery_status === 'Delayed').length;
+    const cancelled = data.filter(r => r.delivery_status === 'Cancelled').length;
+    const totalQty  = data.reduce((s, r) => s + (r.quantity || 0), 0);
+    const sites     = new Set(data.map(r => r.site_id)).size;
+    const avgQty    = total ? (totalQty / total).toFixed(1) : 0;
+
+    document.getElementById('kpi-total').textContent     = total.toLocaleString();
+    document.getElementById('kpi-delivered').textContent = delivered.toLocaleString();
+    document.getElementById('kpi-delayed').textContent   = delayed.toLocaleString();
+    document.getElementById('kpi-cancelled').textContent = cancelled.toLocaleString();
+    document.getElementById('kpi-units').textContent     = totalQty.toLocaleString();
+    document.getElementById('kpi-sites').textContent     = sites.toLocaleString();
+    document.getElementById('kpi-avg-qty').textContent   = avgQty;
+}
+
+function applyFilters() {
+    const search    = document.getElementById('f-search').value.toLowerCase().trim();
+    const status    = document.getElementById('f-status').value;
+    const transport = document.getElementById('f-transport').value;
+    const site      = document.getElementById('f-site').value;
+
+    filtered = allData.filter(r => {
+        const matchSearch = !search ||
+            r.shipment_id.toLowerCase().includes(search) ||
+            r.site_id.toLowerCase().includes(search) ||
+            r.product_id.toLowerCase().includes(search) ||
+            (r.customer_id || '').toLowerCase().includes(search) ||
+            (r.so_number   || '').toLowerCase().includes(search);
+        const matchStatus    = !status    || r.delivery_status === status;
+        const matchTransport = !transport || r.transportation_type === transport;
+        const matchSite      = !site      || r.site_id === site;
+        return matchSearch && matchStatus && matchTransport && matchSite;
+    });
+
+    currentPage = 1;
+    renderTable();
+}
+
+function clearFilters() {
+    document.getElementById('f-search').value    = '';
+    document.getElementById('f-status').value    = '';
+    document.getElementById('f-transport').value = '';
+    document.getElementById('f-site').value      = '';
+    applyFilters();
+}
+
+function changePage(dir) {
+    const maxPage = Math.ceil(filtered.length / PAGE_SIZE);
+    currentPage = Math.max(1, Math.min(maxPage, currentPage + dir));
+    renderTable();
+}
+
+function renderTable() {
+    const maxPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const start   = (currentPage - 1) * PAGE_SIZE;
+    const page    = filtered.slice(start, start + PAGE_SIZE);
+
+    document.getElementById('result-count').textContent =
+        `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} of ${filtered.length} shipments`;
+    document.getElementById('page-info').textContent = `Page ${currentPage} of ${maxPage}`;
+    document.getElementById('btn-prev').disabled = currentPage <= 1;
+    document.getElementById('btn-next').disabled = currentPage >= maxPage;
+
+    if (!page.length) {
+        document.getElementById('tbl-body').innerHTML =
+            `<tr><td colspan="6" class="text-center py-5 text-muted">No shipments found.</td></tr>`;
+        return;
+    }
+
+    const rows = page.map((r, i) => {
+        const rowIdx        = start + i + 1;
+        const statusCls = `status-${r.delivery_status.replace(/\s+/g, '-')}`;
+        const transportIcon = {
+            Rail: 'bi-train-front', Truck: 'bi-truck', Ship: 'bi-ship', Air: 'bi-airplane'
+        }[r.transportation_type] || 'bi-box';
+        const soCell = r.so_number
+            ? `<span class="id-pill">${r.so_number}</span>`
+            : `<span class="text-muted" style="font-size:.78rem;">—</span>`;
+
+        return `
+        <tr data-so="${r.so_number || ''}" data-shipment="${r.shipment_id || ''}">
+            <td class="text-muted small">${rowIdx}</td>
+            <td><span class="id-pill" title="${r.shipment_id}">${r.shipment_id.slice(0,12)}</span></td>
+            <td>${soCell}</td>
+            <td class="text-center"><span class="status-badge ${statusCls}">${r.delivery_status}</span></td>
+            <td class="text-center">
+                <span class="transport-badge">
+                    <i class="bi ${transportIcon} me-1"></i>${r.transportation_type}
+                </span>
+            </td>
+            <td class="text-center">
+                <div class="d-flex justify-content-center gap-1">
+                <button class="btn btn-sm btn-outline-info" onclick="viewShipment('${r.shipment_id}')" title="View Detail">
+                    <i class="bi bi-eye-fill"></i>
+                </button>
+                ${(function(){
+                    const role = localStorage.getItem('user_role');
+                    if (!role || role === 'Analyst') return '';
+                    if (r.delivery_status === 'Delivered' || r.delivery_status === 'Cancelled') {
+                        return `<button class="btn btn-sm btn-outline-secondary" disabled title="Cannot edit — status is ${r.delivery_status}"><i class="bi bi-lock-fill"></i></button>`;
+                    }
+                    return `<button class="btn btn-sm btn-outline-warning" onclick="openEditModal('${r.shipment_id}','${r.delivery_status}')" title="Edit Status"><i class="bi bi-pencil-fill"></i></button>`;
+                })()}
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('tbl-body').innerHTML = rows;
+}
+
+let _highlightTimer  = null;
+let _pendingHighlight = null;  // SO number to highlight after next renderTable
+
+function clearHighlights() {
+    document.querySelectorAll('#tbl-body tr.so-highlight, #tbl-body tr.so-highlight-fade')
+        .forEach(tr => tr.classList.remove('so-highlight', 'so-highlight-fade'));
+    if (_highlightTimer) { clearTimeout(_highlightTimer); _highlightTimer = null; }
+    const banner = document.getElementById('so-highlight-banner');
+    if (banner) banner.remove();
+}
+
+function _applyHighlight(soNumber) {
+    clearHighlights();
+
+    const rows = [...document.querySelectorAll('#tbl-body tr[data-so]')]
+        .filter(tr => tr.dataset.so.trim() === soNumber);
+
+    if (!rows.length) return;
+
+    // Show banner above table
+    const tableWrap = document.querySelector('.table-responsive');
+    if (tableWrap && !document.getElementById('so-highlight-banner')) {
+        const banner = document.createElement('div');
+        banner.id = 'so-highlight-banner';
+        banner.innerHTML = `<i class="bi bi-geo-alt-fill me-2" style="color:#f59e0b;"></i>
+            Showing highlighted record for <strong>${soNumber}</strong>
+            <button onclick="clearHighlights()" style="margin-left:12px;background:none;border:1px solid #fbbf24;
+            border-radius:6px;padding:1px 10px;font-size:.78rem;cursor:pointer;color:#92400e;">✕ Clear</button>`;
+        banner.style.cssText = `background:#fef9c3;border:1px solid #fbbf24;border-radius:10px;
+            padding:10px 16px;margin-bottom:10px;font-size:.84rem;color:#92400e;font-weight:500;
+            display:flex;align-items:center;`;
+        tableWrap.parentNode.insertBefore(banner, tableWrap);
+    }
+
+    // Apply glow to all matched rows
+    rows.forEach(tr => tr.classList.add('so-highlight'));
+
+    // Scroll: first scroll table into viewport, then center the first row
+    rows[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Auto fade after 5s
+    _highlightTimer = setTimeout(() => {
+        rows.forEach(tr => { tr.classList.remove('so-highlight'); tr.classList.add('so-highlight-fade'); });
+        setTimeout(clearHighlights, 1200);
+    }, 5000);
+
+    // Click outside table body dismisses
+    const onAway = (e) => {
+        if (!e.target.closest('#tbl-body') && !e.target.closest('#so-highlight-banner')) {
+            clearHighlights();
+            document.removeEventListener('click', onAway);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', onAway), 400);
+}
+
+async function highlightFromHash() {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#so=')) return;
+    const soNumber = decodeURIComponent(hash.slice(4)).trim();
+    if (!soNumber) return;
+
+    // Reload data fresh so newly dispatched SOs appear
+    try {
+        const res = await axios.get('/api/logistics');
+        allData = res.data.data || [];
+        computeKPIs(allData);
+    } catch(e) { /* use stale data */ }
+
+    // First try: exact match on so_number or shipment_id
+    const exactIdx = allData.findIndex(r =>
+        (r.so_number   || '').trim() === soNumber ||
+        (r.shipment_id || '').trim() === soNumber
+    );
+
+    if (exactIdx !== -1) {
+        // Found exact match — filter by SO number so ALL records for this SO are shown
+        clearFilters();
+        document.getElementById('f-search').value = soNumber;
+        applyFilters();
+        // Navigate to the page containing the first matching record
+        const idx = filtered.findIndex(r =>
+            (r.so_number   || '').trim() === soNumber ||
+            (r.shipment_id || '').trim() === soNumber
+        );
+        if (idx !== -1) {
+            const targetPage = Math.floor(idx / PAGE_SIZE) + 1;
+            if (currentPage !== targetPage) { currentPage = targetPage; renderTable(); }
+            _applyHighlight(soNumber);
+        }
+        return;
+    }
+
+    // No exact match — use the SO number as a search term so the user
+    // sees whatever shipments exist for that order's site/products.
+    // This avoids a confusing "not found" toast for shipped orders whose
+    // logistics enrichment matched by site-fallback instead of SO number.
+    document.getElementById('f-search').value = soNumber;
+    applyFilters();
+
+    if (filtered.length > 0) {
+        // Found related records via search — show a gentle info banner
+        showToastLogistics(
+            `Showing shipments related to <strong>${soNumber}</strong>`,
+            'success'
+        );
+    } else {
+        // Truly nothing — look up the SO status to give a helpful explanation
+        try {
+            const soRes = await axios.get('/api/sales-orders', {
+                params: { search: soNumber, per_page: 5 }
+            });
+            const soList = (soRes.data.data && soRes.data.data.items) || [];
+            const matchedSO = soList.find(o =>
+                (o.so_number || '').trim() === soNumber
+            );
+            if (matchedSO) {
+                const st = (matchedSO.status || '').toLowerCase();
+                if (st === 'pending' || st === 'confirmed') {
+                    showToastLogistics(
+                        `<strong>${soNumber}</strong> is <strong>${matchedSO.status}</strong> — no shipment exists until the order is dispatched.`,
+                        'warn'
+                    );
+                } else if (st === 'cancelled') {
+                    showToastLogistics(
+                        `<strong>${soNumber}</strong> was cancelled — no logistics record exists.`,
+                        'warn'
+                    );
+                } else {
+                    showToastLogistics(
+                        `No shipment records found for <strong>${soNumber}</strong>.`,
+                        'warn'
+                    );
+                }
+            } else {
+                showToastLogistics(
+                    `No shipment records found for <strong>${soNumber}</strong>.`,
+                    'warn'
+                );
+            }
+        } catch(_) {
+            showToastLogistics(`No shipment records found for <strong>${soNumber}</strong>.`, 'warn');
+        }
+    }
+}
+
+function showToastLogistics(msg, type) {
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;
+        border-radius:10px;color:white;font-size:.87rem;font-weight:600;
+        background:${type==='warn'?'#f59e0b':'#10b981'};box-shadow:0 4px 20px rgba(0,0,0,.15);`;
+    t.innerHTML = msg;  // supports <strong> tags in messages
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+
+
+
+function viewShipment(shipmentId) {
+    const r = allData.find(x => x.shipment_id === shipmentId);
+    if (!r) return;
+    const statusCls = `status-${r.delivery_status.replace(/\s+/g, '-')}`;
+    const transportIcon = {
+        Rail: 'bi-train-front', Truck: 'bi-truck', Ship: 'bi-ship', Air: 'bi-airplane'
+    }[r.transportation_type] || 'bi-box';
+    document.getElementById('view-modal-body').innerHTML = `
+        <div class="row g-3">
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl">Shipment ID</div>
+                    <div class="val"><span class="id-pill">${r.shipment_id}</span></div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl">Site ID</div>
+                    <div class="val"><span class="id-pill">${r.site_id}</span></div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl">Product ID</div>
+                    <div class="val"><span class="id-pill">${r.product_id}</span></div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl">Quantity</div>
+                    <div class="val fw-bold text-dark">${(r.quantity || 0).toLocaleString()}</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl">Shipment Date</div>
+                    <div class="val">${r.shipment_date}</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl">Delivery Status</div>
+                    <div class="val"><span class="status-badge ${statusCls}">${r.delivery_status}</span></div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl">Transport Type</div>
+                    <div class="val"><i class="bi ${transportIcon} me-1"></i>${r.transportation_type}</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl"><i class="bi bi-person-fill me-1 text-primary"></i>Customer</div>
+                    <div class="val">${r.customer_id ? `<span class="id-pill">${r.customer_id}</span><span class="ms-1 text-muted" style="font-size:.8rem;">${r.customer_name || ''}</span>` : '<span class="text-muted">—</span>'}</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-box">
+                    <div class="lbl"><i class="bi bi-receipt me-1 text-success"></i>Sales Order</div>
+                    <div class="val">${r.so_number ? `<span class="id-pill">${r.so_number}</span>` : '<span class="text-muted">—</span>'}</div>
+                </div>
+            </div>
+        </div>`;
+    new bootstrap.Modal(document.getElementById('shipmentViewModal')).show();
+}
+</script>
+
+
+<!-- Edit Status Modal -->
+<div class="modal fade" id="editStatusModal" tabindex="-1" aria-labelledby="editStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
+            <div class="modal-header border-0 text-white" style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:18px 22px;">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-pencil-fill me-2"></i>Edit Shipment Status</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:24px;">
+                <input type="hidden" id="editShipmentId">
+                <p class="text-muted mb-3" style="font-size:.85rem;">
+                    Updating status for shipment <strong id="editShipmentIdLabel"></strong>
+                </p>
+                <div class="d-flex flex-column gap-2">
+                    <label class="edit-status-option d-flex align-items-center gap-3 p-3 rounded-3 border cursor-pointer" style="cursor:pointer;" onclick="this.querySelector('input').checked=true;document.querySelectorAll('.edit-status-option').forEach(e=>e.classList.remove('selected'));this.classList.add('selected')">
+                        <input type="radio" name="editStatus" value="Received" class="d-none">
+                        <span class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#dcfce7;flex-shrink:0;">
+                            <i class="bi bi-check-circle-fill" style="color:#16a34a;font-size:1.1rem;"></i>
+                        </span>
+                        <div>
+                            <div class="fw-semibold" style="font-size:.9rem;">Received</div>
+                            <div class="text-muted" style="font-size:.75rem;">Shipment delivered — updates inventory stock</div>
+                        </div>
+                    </label>
+                    <label class="edit-status-option d-flex align-items-center gap-3 p-3 rounded-3 border cursor-pointer" style="cursor:pointer;" onclick="this.querySelector('input').checked=true;document.querySelectorAll('.edit-status-option').forEach(e=>e.classList.remove('selected'));this.classList.add('selected')">
+                        <input type="radio" name="editStatus" value="In Transit" class="d-none">
+                        <span class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#dbeafe;flex-shrink:0;">
+                            <i class="bi bi-truck" style="color:#1d4ed8;font-size:1.1rem;"></i>
+                        </span>
+                        <div>
+                            <div class="fw-semibold" style="font-size:.9rem;">In Transit</div>
+                            <div class="text-muted" style="font-size:.75rem;">Shipment is currently on the way</div>
+                        </div>
+                    </label>
+                    <label class="edit-status-option d-flex align-items-center gap-3 p-3 rounded-3 border cursor-pointer" style="cursor:pointer;" onclick="this.querySelector('input').checked=true;document.querySelectorAll('.edit-status-option').forEach(e=>e.classList.remove('selected'));this.classList.add('selected')">
+                        <input type="radio" name="editStatus" value="Delayed" class="d-none">
+                        <span class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#fef3c7;flex-shrink:0;">
+                            <i class="bi bi-clock-history" style="color:#b45309;font-size:1.1rem;"></i>
+                        </span>
+                        <div>
+                            <div class="fw-semibold" style="font-size:.9rem;">Delayed</div>
+                            <div class="text-muted" style="font-size:.75rem;">Shipment is behind schedule</div>
+                        </div>
+                    </label>
+                    <label class="edit-status-option d-flex align-items-center gap-3 p-3 rounded-3 border cursor-pointer" style="cursor:pointer;" onclick="this.querySelector('input').checked=true;document.querySelectorAll('.edit-status-option').forEach(e=>e.classList.remove('selected'));this.classList.add('selected')">
+                        <input type="radio" name="editStatus" value="Cancelled" class="d-none">
+                        <span class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:#fee2e2;flex-shrink:0;">
+                            <i class="bi bi-x-circle-fill" style="color:#dc2626;font-size:1.1rem;"></i>
+                        </span>
+                        <div>
+                            <div class="fw-semibold" style="font-size:.9rem;">Cancelled</div>
+                            <div class="text-muted" style="font-size:.75rem;">Shipment has been cancelled</div>
+                        </div>
+                    </label>
+                </div>
+                <div id="editModalResult" class="mt-3"></div>
+            </div>
+            <div class="modal-footer border-0" style="padding:16px 22px;">
+                <button class="btn btn-light fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn fw-semibold px-4 text-white" id="editSaveBtn" onclick="saveEditStatus()" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+                    <i class="bi bi-check-lg me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+.edit-status-option { transition: all .15s ease; }
+.edit-status-option:hover { background:#f8fafc; border-color:#94a3b8 !important; }
+.edit-status-option.selected { background:#f0f9ff; border-color:#0ea5e9 !important; box-shadow:0 0 0 2px rgba(14,165,233,.2); }
+</style>
+<!-- Shipment View Modal -->
+<div class="modal fade" id="shipmentViewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:18px;overflow:hidden;">
+            <div class="modal-header text-white border-0" style="background:linear-gradient(135deg,#0ea5e9,#06b6d4);padding:20px 24px;">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-truck me-2"></i>Shipment Detail</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="view-modal-body">
+            </div>
+            <div class="modal-footer border-0" style="padding:12px 24px;">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}

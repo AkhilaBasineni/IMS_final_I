@@ -1,0 +1,592 @@
+{% extends 'public_base.html' %}
+{% block title %}InventoHub - Intelligent Operations{% endblock %}
+
+{% block styles %}
+<style>
+    /* ── Hero ── */
+    .hero {
+        position: relative; min-height: 100vh; display: flex; align-items: center;
+        background: linear-gradient(150deg, #0f172a 0%, #1e1b4b 35%, #172554 70%, #0c4a6e 100%);
+        overflow: hidden;
+    }
+    .hero canvas { position: absolute; inset: 0; z-index: 1; }
+    .hero-glow-1 {
+        position: absolute; width: 600px; height: 600px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(79,70,229,0.25), transparent 70%);
+        top: -100px; left: -100px; z-index: 0; animation: heroGlow 12s ease-in-out infinite alternate;
+    }
+    .hero-glow-2 {
+        position: absolute; width: 500px; height: 500px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(14,165,233,0.2), transparent 70%);
+        bottom: -80px; right: -80px; z-index: 0; animation: heroGlow 12s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes heroGlow { 0% { transform: scale(1); } 100% { transform: scale(1.2); } }
+
+    .hero-content { position: relative; z-index: 3; }
+    .hero-badge {
+        display: inline-flex; align-items: center; gap: 10px;
+        padding: 10px 22px; border-radius: 100px;
+        background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.85); font-size: 0.85rem; font-weight: 600;
+        backdrop-filter: blur(10px); margin-bottom: 28px;
+    }
+    .hero-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .hero h1 {
+        font-size: clamp(2.8rem, 6vw, 4.5rem); font-weight: 800;
+        line-height: 1.08; color: #fff; margin-bottom: 24px;
+        letter-spacing: -1.5px;
+    }
+    .hero p {
+        font-size: 1.15rem; color: rgba(255,255,255,0.6); line-height: 1.8;
+        max-width: 520px; margin-bottom: 36px;
+    }
+    .hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; }
+    .hero-buttons .btn-brand { padding: 15px 36px; font-size: 1.05rem; border-radius: 14px; }
+    .hero-buttons .btn-outline-light {
+        padding: 15px 36px; font-size: 1.05rem; border-radius: 14px;
+        background: transparent; border: 2px solid rgba(255,255,255,0.2);
+        color: #fff; font-weight: 700; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s;
+    }
+    .hero-buttons .btn-outline-light:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.4); color: #fff; }
+
+    /* Dashboard mockup */
+    .hero-mockup {
+        position: relative; z-index: 3;
+        width: 100%; max-width: 520px;
+        animation: mockupFloat 6s ease-in-out infinite;
+    }
+    @keyframes mockupFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-18px); }
+    }
+    .mockup-card {
+        background: rgba(255,255,255,0.07); backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.12); border-radius: 20px;
+        overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+        width: 100%;
+    }
+    .mockup-bar {
+        display: flex; align-items: center; gap: 8px; padding: 14px 18px;
+        background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .mockup-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .mockup-dot:nth-child(1) { background: #ef4444; }
+    .mockup-dot:nth-child(2) { background: #f59e0b; }
+    .mockup-dot:nth-child(3) { background: #22c55e; }
+    .mockup-bar-title { margin-left: 12px; font-size: 0.8rem; color: rgba(255,255,255,0.4); font-weight: 600; }
+    .mockup-body { display: flex; min-height: 200px; }
+    .mockup-sidebar {
+        width: 30%; min-width: 90px; max-width: 180px;
+        padding: 12px 8px; border-right: 1px solid rgba(255,255,255,0.06);
+        display: flex; flex-direction: column; gap: 6px;
+    }
+    .mockup-nav-item {
+        display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+        border-radius: 10px; font-size: 0.72rem; color: rgba(255,255,255,0.4); font-weight: 500;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mockup-nav-item.active { background: rgba(79,70,229,0.3); color: rgba(255,255,255,0.9); }
+    .mockup-nav-item i { font-size: 0.85rem; flex-shrink: 0; }
+    .mockup-main { flex: 1; padding: 14px; min-width: 0; }
+    .mockup-chart {
+        display: flex; align-items: flex-end; gap: 6px; height: 100px; margin-bottom: 14px;
+        padding: 0 4px;
+    }
+    .mockup-bar-col {
+        flex: 1; border-radius: 4px 4px 0 0;
+        background: linear-gradient(to top, rgba(79,70,229,0.6), rgba(14,165,233,0.4));
+        animation: barGrow 2s ease-out forwards; transform-origin: bottom; transform: scaleY(0);
+    }
+    @keyframes barGrow { to { transform: scaleY(1); } }
+    .mockup-stats-row { display: flex; gap: 8px; }
+    .mockup-stat {
+        flex: 1; padding: 10px 8px; border-radius: 10px; min-width: 0;
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06);
+    }
+    .mockup-stat-label { font-size: 0.62rem; color: rgba(255,255,255,0.35); margin-bottom: 4px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mockup-stat-value { font-size: 0.95rem; color: rgba(255,255,255,0.85); font-weight: 700; }
+
+    .hero-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to bottom, transparent, #fff); z-index: 4; }
+
+    /* ── Trusted By ── */
+    .trusted-section { padding: 60px 0 20px; }
+    .trusted-label { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); text-align: center; margin-bottom: 30px; }
+    .trusted-logos { display: flex; align-items: center; justify-content: center; gap: 50px; flex-wrap: wrap; opacity: 0.35; }
+    .trusted-logo { font-size: 1.5rem; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+    .trusted-logo span { font-weight: 400; }
+
+    /* ── Stats ── */
+    .stats-section { padding: 40px 0 80px; background: var(--primary-50); }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* ── Features ── */
+    .features-section { padding: 100px 0; }
+    .feature-card { height: 100%; }
+    .feature-card h4 { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+    .feature-card p { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.7; margin: 0; }
+
+    /* ── How It Works ── */
+    .how-section { padding: 100px 0; background: var(--bg-warm); }
+    .steps-row { position: relative; }
+    .steps-line {
+        position: absolute; top: 48px; left: 15%; right: 15%; height: 3px;
+        background: linear-gradient(90deg, var(--primary), var(--sky), var(--emerald));
+        border-radius: 3px; z-index: 0;
+        transform: scaleX(0); transform-origin: left; transition: transform 1.5s cubic-bezier(0.16,1,0.3,1);
+    }
+    .steps-line.animate { transform: scaleX(1); }
+    .step-card { text-align: center; position: relative; z-index: 1; }
+    .step-number {
+        width: 96px; height: 96px; border-radius: 50%; margin: 0 auto 24px;
+        background: var(--bg); border: 3px solid var(--border);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; font-weight: 800; color: var(--primary);
+        transition: all 0.4s cubic-bezier(0.16,1,0.3,1); box-shadow: var(--shadow);
+    }
+    .step-card:hover { filter: drop-shadow(0 8px 20px rgba(79,70,229,0.12)); }
+    .step-card:hover .step-number {
+        background: linear-gradient(135deg, var(--primary), var(--sky));
+        color: #fff; border-color: transparent; transform: scale(1.1);
+        box-shadow: var(--shadow-glow);
+    }
+    .step-card h5 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+    .step-card p { font-size: 0.92rem; color: var(--text-secondary); line-height: 1.7; max-width: 260px; margin: 0 auto; }
+
+    /* ── Testimonials ── */
+    .testimonials-section { padding: 100px 0; }
+    .testimonial-card {
+        background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+        padding: 36px; height: 100%; transition: all 0.4s cubic-bezier(0.16,1,0.3,1); position: relative;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .testimonial-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-xl); border-color: rgba(79,70,229,0.25); }
+    .testimonial-card .quote-icon { font-size: 2.5rem; color: var(--primary-100); margin-bottom: 16px; line-height: 1; }
+    .testimonial-card .quote-text { font-size: 1rem; color: var(--text-secondary); line-height: 1.8; margin-bottom: 24px; font-style: italic; }
+    .testimonial-card .stars { color: var(--accent); font-size: 0.9rem; margin-bottom: 16px; }
+    .testimonial-author { display: flex; align-items: center; gap: 14px; }
+    .testimonial-avatar {
+        width: 48px; height: 48px; border-radius: 50%; object-fit: cover;
+        border: 2px solid var(--primary-100);
+    }
+    .testimonial-name { font-weight: 700; font-size: 0.95rem; color: var(--text); }
+    .testimonial-role { font-size: 0.82rem; color: var(--text-muted); }
+
+    /* ── CTA ── */
+    .cta-section {
+        padding: 100px 0; position: relative; overflow: hidden;
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #172554 100%);
+    }
+    .cta-section h2 { color: #fff; font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; margin-bottom: 18px; }
+    .cta-section p { color: rgba(255,255,255,0.6); font-size: 1.1rem; max-width: 500px; margin: 0 auto 36px; line-height: 1.7; }
+    .cta-shape {
+        position: absolute; border-radius: 50%; opacity: 0.08; pointer-events: none;
+    }
+    .cta-shape-1 { width: 400px; height: 400px; background: var(--primary); top: -150px; right: -100px; }
+    .cta-shape-2 { width: 300px; height: 300px; background: var(--sky); bottom: -100px; left: -80px; }
+
+    @media (max-width: 992px) {
+        .hero-content { text-align: center; }
+        .hero p { margin-left: auto; margin-right: auto; }
+        .hero-buttons { justify-content: center; }
+        .hero-badge { margin-left: auto; margin-right: auto; }
+        .mockup-sidebar { width: 28%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-glow-1"></div>
+    <div class="hero-glow-2"></div>
+    <canvas id="particleCanvas"></canvas>
+    <div class="hero-fade"></div>
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 hero-content" style="padding: 50px 0 40px;">
+                <div class="hero-badge shimmer">
+                    <span class="dot"></span>
+                    Now in v3.0 — Deeper Insights with Data Analytics
+                </div>
+                <h1>Intelligent<br>Inventory,<br><span class="gradient-text-animated">Simplified</span></h1>
+                <p>Streamline your entire supply chain with real-time tracking, predictive analytics, and automated workflows — all from one powerful platform.</p>
+                <div class="hero-buttons">
+                    
+                </div>
+            </div>
+            <div class="col-lg-6 col-12 d-flex justify-content-center px-3 px-lg-0" style="padding-top: 20px; padding-bottom: 40px;">
+                <div class="hero-mockup">
+                    <div class="mockup-card">
+                        <div class="mockup-bar">
+                            <div class="mockup-dot"></div><div class="mockup-dot"></div><div class="mockup-dot"></div>
+                            <span class="mockup-bar-title">InventoHub Dashboard</span>
+                        </div>
+                        <div class="mockup-body">
+                            <div class="mockup-sidebar">
+                                <div class="mockup-nav-item active"><i class="bi bi-grid-1x2"></i> Dashboard</div>
+                                <div class="mockup-nav-item"><i class="bi bi-box-seam"></i> Inventory</div>
+                                <div class="mockup-nav-item"><i class="bi bi-truck"></i> Products</div>
+                                <div class="mockup-nav-item"><i class="bi bi-bar-chart"></i> Warehouses</div>
+                                <div class="mockup-nav-item"><i class="bi bi-people"></i>Logistics</div>
+                                <div class="mockup-nav-item"><i class="bi bi-gear"></i> Orders</div>
+                            </div>
+                            <div class="mockup-main">
+                                <div class="mockup-chart">
+                                    <div class="mockup-bar-col" style="height:45%; animation-delay:0.1s;"></div>
+                                    <div class="mockup-bar-col" style="height:70%; animation-delay:0.2s;"></div>
+                                    <div class="mockup-bar-col" style="height:55%; animation-delay:0.3s;"></div>
+                                    <div class="mockup-bar-col" style="height:90%; animation-delay:0.4s;"></div>
+                                    <div class="mockup-bar-col" style="height:65%; animation-delay:0.5s;"></div>
+                                    <div class="mockup-bar-col" style="height:80%; animation-delay:0.6s;"></div>
+                                    <div class="mockup-bar-col" style="height:95%; animation-delay:0.7s;"></div>
+                                </div>
+                                <div class="mockup-stats-row">
+                                    <div class="mockup-stat">
+                                        <div class="mockup-stat-label">Warehouses</div>
+                                        <div class="mockup-stat-value" style="color:#818cf8;" id="hero-warehouses">—</div>
+                                    </div>
+                                    <div class="mockup-stat">
+                                        <div class="mockup-stat-label">Products</div>
+                                        <div class="mockup-stat-value" style="color:#38bdf8;" id="hero-products">—</div>
+                                    </div>
+                                    <div class="mockup-stat">
+                                        <div class="mockup-stat-label">Managers</div>
+                                        <div class="mockup-stat-value" style="color:#fbbf24;" id="hero-managers">—</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div><!-- /.hero-mockup -->
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<!-- Stats -->
+<section class="stats-section" style="padding:0px;">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card reveal" style="border: 1.5px solid rgba(79,70,229,0.18); box-shadow: 0 4px 24px rgba(79,70,229,0.06);">
+                <div class="mb-2" style="font-size:2rem; color:var(--primary);"><i class="bi bi-people-fill"></i></div>
+                <div class="stat-number gradient-text" id="stat-customers">—</div>
+                <div style="font-size:0.92rem; color:var(--text-secondary); font-weight:600;">Total Customers</div>
+            </div>
+            <div class="stat-card reveal reveal-d1" style="border: 1.5px solid rgba(14,165,233,0.18); box-shadow: 0 4px 24px rgba(14,165,233,0.06);">
+                <div class="mb-2" style="font-size:2rem; color:var(--sky);"><i class="bi bi-box-seam"></i></div>
+                <div class="stat-number gradient-text" id="stat-products">—</div>
+                <div style="font-size:0.92rem; color:var(--text-secondary); font-weight:600;">Total Products</div>
+            </div>
+            <div class="stat-card reveal reveal-d2" style="border: 1.5px solid rgba(16,185,129,0.18); box-shadow: 0 4px 24px rgba(16,185,129,0.06);">
+                <div class="mb-2" style="font-size:2rem; color:var(--emerald);"><i class="bi bi-send-check-fill"></i></div>
+                <div class="stat-number gradient-text" id="stat-shipments">—</div>
+                <div style="font-size:0.92rem; color:var(--text-secondary); font-weight:600;">Total Shipments</div>
+            </div>
+            <div class="stat-card reveal reveal-d3" style="border: 1.5px solid rgba(245,158,11,0.18); box-shadow: 0 4px 24px rgba(245,158,11,0.06);">
+                <div class="mb-2" style="font-size:2rem; color:var(--accent);"><i class="bi bi-building"></i></div>
+                <div class="stat-number gradient-text" id="stat-warehouses">—</div>
+                <div style="font-size:0.92rem; color:var(--text-secondary); font-weight:600;">Total Warehouses</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="features-section" style="padding:50px;">
+    <div class="container">
+        <div class="text-center mb-5">
+            <div class="section-label reveal"><i class="bi bi-grid-1x2-fill"></i> Features</div>
+            <h2 class="section-title reveal reveal-d1">Everything You Need to<br><span class="gradient-text">Ship Smarter</span></h2>
+            <p class="section-subtitle mx-auto reveal reveal-d2">From real-time tracking to predictive analytics, InventoHub gives you complete control over your entire supply chain.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4 reveal">
+                <div class="card-premium feature-card" style="border: 1.5px solid rgba(79,70,229,0.18);">
+                    <div class="icon-box icon-box-primary"><i class="bi bi-activity"></i></div>
+                    <h4>Live Inventory Lifecycle Tracking</h4>
+                    <p>From stock replenishment to shipment dispatch and returns, monitor and update inventory dynamically in real time.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 reveal reveal-d1">
+                <div class="card-premium feature-card" style="border: 1.5px solid rgba(245,158,11,0.18);">
+                    <div class="icon-box icon-box-warm"><i class="bi bi-graph-up-arrow"></i></div>
+                    <h4>Data-Driven Forecasting</h4>
+                    <p>Use historical data and trends to estimate demand and maintain optimal inventory levels.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 reveal reveal-d2">
+                <div class="card-premium feature-card" style="border: 1.5px solid rgba(16,185,129,0.18);">
+                    <div class="icon-box icon-box-emerald"><i class="bi bi-gear-wide-connected"></i></div>
+                    <h4>Smart Order-to-Inventory Flow</h4>
+                    <p>Automate the complete cycle from purchase orders to sales fulfillment. Manage supplier orders, receive stock, and update inventory seamlessly.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 reveal reveal-d1">
+                <div class="card-premium feature-card" style="border: 1.5px solid rgba(239,68,68,0.18);">
+                    <div class="icon-box icon-box-coral"><i class="bi bi-bar-chart-steps"></i></div>
+                    <h4>Advanced Analytics</h4>
+                    <p>Beautiful dashboards with drill-down capabilities. Track KPIs, turnover rates, and carrying costs in real-time.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 reveal reveal-d2">
+                <div class="card-premium feature-card" style="border: 1.5px solid rgba(14,165,233,0.18);">
+                    <div class="icon-box icon-box-sky"><i class="bi bi-box-seam"></i></div>
+                    <h4>Multi-Warehouse Sync</h4>
+                    <p>Manage unlimited locations from a single dashboard. Instant sync ensures data consistency across your entire network.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 reveal reveal-d3">
+                <div class="card-premium feature-card" style="border: 1.5px solid rgba(79,70,229,0.18);">
+                    <div class="icon-box icon-box-primary"><i class="bi bi-phone-fill"></i></div>
+                    <h4>Mobile First</h4>
+                    <p>Full-featured mobile app for warehouse floor operations. Scan, count, and manage inventory right from your pocket.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- System Architecture / Workflow -->
+<section class="workflow-section" style="padding:70px 0; background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 40%, #0c4a6e 100%); position:relative; overflow:hidden;">
+    <div class="workflow-bg-glow" style="position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(79,70,229,0.18),transparent 70%);top:-200px;left:-100px;pointer-events:none;"></div>
+    <div class="workflow-bg-glow" style="position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(14,165,233,0.12),transparent 70%);bottom:-150px;right:-80px;pointer-events:none;"></div>
+    <div class="container position-relative">
+        <div class="text-center mb-5 reveal">
+    <div class="section-label d-inline-flex align-items-center gap-2">
+        <i class="bi bi-diagram-3-fill"></i> System Architecture
+    </div>
+
+    <h2 class="fw-bold display-6 text-white mt-3">
+        How Data Flows Through 
+        <span class="gradient-text">InventoHub</span>
+    </h2>
+
+    <p class="lead mt-2 text-muted-custom">
+        Observe how data seamlessly flows through the InventoHub nodes.
+    </p>
+</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;position:relative;" class="workflow-grid-nodes">
+            <!-- Connector line -->
+            <div style="position:absolute;top:54px;left:calc(12.5% + 12px);right:calc(12.5% + 12px);height:2px;background:linear-gradient(90deg,#4f46e5,#0ea5e9,#10b981,#f59e0b);border-radius:2px;z-index:0;opacity:0.5;"></div>
+
+            <!-- Node 1 -->
+            <div class="reveal" style="transition-delay:0.1s;background:rgba(255,255,255,0.05);border:1px solid rgba(79,70,229,0.35);border-radius:20px;padding:32px 24px;position:relative;z-index:1;transition:transform 0.3s,box-shadow 0.3s;backdrop-filter:blur(10px);" onmouseover="this.style.transform='translateY(-6px)';this.style.boxShadow='0 20px 50px rgba(79,70,229,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+                <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(79,70,229,0.25),rgba(14,165,233,0.15));border:1px solid rgba(79,70,229,0.4);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:1.6rem;color:#818cf8;"><i class="bi bi-cart-plus-fill"></i></div>
+                <h5 class="fw-bold mb-3 text-white">1. Procurement</h5>
+                <p class="small mb-0" style="color:#cbd5e1;line-height:1.8;">Managers generate <strong style="color:#a5b4fc;">Purchase Orders</strong>. Upon vendor delivery, goods are instantly queued for warehouse intake via the logistics module.</p>
+            </div>
+
+            <!-- Node 2 -->
+            <div class="reveal" style="transition-delay:0.3s;background:rgba(255,255,255,0.05);border:1px solid rgba(14,165,233,0.35);border-radius:20px;padding:32px 24px;position:relative;z-index:1;transition:transform 0.3s,box-shadow 0.3s;backdrop-filter:blur(10px);" onmouseover="this.style.transform='translateY(-6px)';this.style.boxShadow='0 20px 50px rgba(14,165,233,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+                <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(14,165,233,0.25),rgba(56,189,248,0.15));border:1px solid rgba(14,165,233,0.4);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:1.6rem;color:#38bdf8;"><i class="bi bi-boxes"></i></div>
+                <h5 class="fw-bold mb-3 text-white">2. Core Inventory</h5>
+                <p class="small mb-0" style="color:#cbd5e1;line-height:1.8;">Products populate localized <strong style="color:#7dd3fc;">Warehouses</strong>. The central ledger calculates exact Live Stock, replenishment points, and auto-flags stockouts.</p>
+            </div>
+
+            <!-- Node 3 -->
+            <div class="reveal" style="transition-delay:0.5s;background:rgba(255,255,255,0.05);border:1px solid rgba(16,185,129,0.35);border-radius:20px;padding:32px 24px;position:relative;z-index:1;transition:transform 0.3s,box-shadow 0.3s;backdrop-filter:blur(10px);" onmouseover="this.style.transform='translateY(-6px)';this.style.boxShadow='0 20px 50px rgba(16,185,129,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+                <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(16,185,129,0.25),rgba(45,212,191,0.15));border:1px solid rgba(16,185,129,0.4);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:1.6rem;color:#34d399;"><i class="bi bi-receipt-cutoff"></i></div>
+                <h5 class="fw-bold mb-3 text-white">3. Fulfillment</h5>
+                <p class="small mb-0" style="color:#cbd5e1;line-height:1.8;"><strong style="color:#6ee7b7;">Sales Orders</strong> are logged. When marked "Shipped", the engine automatically deducts units from live stock — zero manual entry required.</p>
+            </div>
+
+            <!-- Node 4 -->
+            <div class="reveal" style="transition-delay:0.7s;background:rgba(255,255,255,0.05);border:1px solid rgba(245,158,11,0.35);border-radius:20px;padding:32px 24px;position:relative;z-index:1;transition:transform 0.3s,box-shadow 0.3s;backdrop-filter:blur(10px);" onmouseover="this.style.transform='translateY(-6px)';this.style.boxShadow='0 20px 50px rgba(245,158,11,0.2)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+                <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(245,158,11,0.25),rgba(251,191,36,0.15));border:1px solid rgba(245,158,11,0.4);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:1.6rem;color:#fbbf24;"><i class="bi bi-graph-up-arrow"></i></div>
+                <h5 class="fw-bold mb-3 text-white">4. Business Intel</h5>
+                <p class="small mb-0" style="color:#cbd5e1;line-height:1.8;">Every transaction updates the <strong style="color:#fde68a;">Executive Dashboard</strong>. Role-based views show real-time Stock Valuation and revenue metrics.</p>
+            </div>
+        </div>
+    </div>
+    <style>
+        @media (max-width: 991px) {
+            .workflow-grid-nodes { grid-template-columns: repeat(2,1fr) !important; }
+            .workflow-grid-nodes > div[style*="position:absolute"] { display: none; }
+        }
+        @media (max-width: 575px) {
+            .workflow-grid-nodes { grid-template-columns: 1fr !important; }
+        }
+    </style>
+</section>
+
+
+
+<!-- CTA -->
+<section class="cta-section text-center"style="padding:50px;">
+    <div class="cta-shape cta-shape-1"></div>
+    <div class="cta-shape cta-shape-2"></div>
+    <div class="container position-relative" style="z-index:2;">
+        <h2 class="reveal">Ready to Transform Your<br><span class="gradient-text-animated">Supply Chain?</span></h2>
+        <p class="reveal reveal-d1">Join thousands of enterprises already using InventoHub to optimize operations and reduce costs.</p>
+        <div class="reveal reveal-d2">
+            <a href="/login" class="btn-brand btn-lg shimmer">Start Free Trial <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Dynamic Stats Loader ──
+(async function loadStats() {
+    try {
+        const res = await fetch('/api/analytics/about-stats');
+        const json = await res.json();
+        if (!json.success) return;
+        const d = json.data;
+
+        // Helper: animate count up
+        function countUp(el, target) {
+            if (!el) return;
+            const duration = 1400;
+            const start = performance.now();
+            const fmt = n => n >= 1000 ? n.toLocaleString() : String(n);
+            function step(now) {
+                const t = Math.min((now - start) / duration, 1);
+                const ease = 1 - Math.pow(1 - t, 3);
+                el.textContent = fmt(Math.round(ease * target));
+                if (t < 1) requestAnimationFrame(step);
+                else el.textContent = fmt(target);
+            }
+            requestAnimationFrame(step);
+        }
+
+        // Store resolved values on elements so IntersectionObserver can animate on scroll-in
+        function wire(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.dataset.statValue = value;
+            // If element is already visible, animate immediately
+            const rect = el.getBoundingClientRect();
+            if (rect.top < window.innerHeight) {
+                countUp(el, value);
+            }
+        }
+
+        // Hero mockup stats
+        countUp(document.getElementById('hero-warehouses'), d.warehouses);
+        countUp(document.getElementById('hero-products'), d.products);
+        countUp(document.getElementById('hero-managers'), d.managers);
+
+        // Stats section cards — wire all 4
+        wire('stat-customers',  d.customers);
+        wire('stat-products',   d.products);
+        wire('stat-shipments',  d.shipments);
+        wire('stat-warehouses', d.warehouses);
+
+        // IntersectionObserver to trigger count-up when cards scroll into view
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    const val = parseInt(e.target.dataset.statValue);
+                    if (!isNaN(val) && e.target.textContent === '—') countUp(e.target, val);
+                    obs.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        ['stat-customers','stat-products','stat-shipments','stat-warehouses'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) obs.observe(el);
+        });
+
+    } catch (e) {
+        // Fallback: show dashes remain, no crash
+        console.warn('Stats load failed:', e);
+    }
+})();
+
+// ── Particle Network Canvas ──
+(function() {
+    const canvas = document.getElementById('particleCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let w, h, mouse = { x: null, y: null };
+    const PARTICLE_COUNT = 70;
+    const CONNECT_DIST = 140;
+
+    function resize() {
+        const hero = canvas.parentElement;
+        w = canvas.width = hero.offsetWidth;
+        h = canvas.height = hero.offsetHeight;
+    }
+
+    function createParticles() {
+        particles = [];
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push({
+                x: Math.random() * w, y: Math.random() * h,
+                vx: (Math.random() - 0.5) * 0.6, vy: (Math.random() - 0.5) * 0.6,
+                r: Math.random() * 2 + 1.2,
+                opacity: Math.random() * 0.5 + 0.3
+            });
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, w, h);
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > w) p.vx *= -1;
+            if (p.y < 0 || p.y > h) p.vy *= -1;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(165, 180, 252, ${p.opacity})`;
+            ctx.fill();
+
+            for (let j = i + 1; j < particles.length; j++) {
+                const q = particles[j];
+                const dx = p.x - q.x, dy = p.y - q.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < CONNECT_DIST) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(q.x, q.y);
+                    const alpha = (1 - dist / CONNECT_DIST) * 0.2;
+                    ctx.strokeStyle = `rgba(165, 180, 252, ${alpha})`;
+                    ctx.lineWidth = 0.8;
+                    ctx.stroke();
+                }
+            }
+
+            // Mouse interaction
+            if (mouse.x !== null) {
+                const dx = p.x - mouse.x, dy = p.y - mouse.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 180) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(mouse.x, mouse.y);
+                    ctx.strokeStyle = `rgba(129, 140, 248, ${(1 - dist / 180) * 0.4})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+        }
+        requestAnimationFrame(draw);
+    }
+
+    canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+    });
+    canvas.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
+
+    window.addEventListener('resize', () => { resize(); createParticles(); });
+    resize(); createParticles(); draw();
+})();
+
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+# Environment variables
+.env
+
+# Virtual environment
+myenv/
+venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# VS Code settings
+.vscode/
+
+# JetBrains/PyCharm settings
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SQLite database files
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# Uploaded files (optional)
+static/uploads/
+
+# Build/dist files
+dist/
+build/
+
+# Temporary files
+*.tmp

@@ -1,0 +1,781 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  /* KPI Cards */
+  .kpi-icon { width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:14px;font-size:1.25rem; }
+  .kpi-icon.blue   { background:linear-gradient(135deg,rgba(79,70,229,0.12),rgba(14,165,233,0.08));color:var(--primary); }
+  .kpi-icon.green  { background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(45,212,191,0.08));color:var(--emerald); }
+  .kpi-icon.yellow { background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(251,191,36,0.08));color:var(--amber); }
+  .kpi-icon.purple { background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(167,139,250,0.08));color:var(--purple); }
+  .kpi-icon.red    { background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(248,113,113,0.08));color:var(--coral); }
+  .kpi-value { font-size:1.6rem;font-weight:800;line-height:1.1;color:var(--text); }
+  .kpi-label { font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em; }
+  .id-pill   { font-family:monospace;background:var(--bg-subtle);color:var(--text-secondary);border-radius:6px;padding:2px 8px;font-size:0.78rem;border:1px solid var(--border-light); }
+  .po-row:hover { background:rgba(79,70,229,0.03) !important;cursor:pointer; }
+  /* Filter card */
+  .filter-section { background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border-light);padding:20px;margin-bottom:24px;box-shadow:var(--shadow-sm); }
+  /* Table */
+  .table-card { background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-light);overflow:hidden;box-shadow:var(--shadow); }
+  .table-card table thead th { background:linear-gradient(135deg,var(--bg-subtle),#f1f5f9);font-size:0.74rem;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--text-muted);padding:14px 18px;border-bottom:2px solid var(--border); }
+  .table-card table td { padding:14px 18px;border-bottom:1px solid var(--border-light);vertical-align:middle;color:var(--text-secondary); }
+  .table-card table tbody tr:hover td { color:var(--text);background:rgba(79,70,229,0.025); }
+  .table-card .card-footer { background:var(--bg-subtle);border-top:1px solid var(--border-light);padding:12px 18px; }
+  /* Email preview */
+  .email-preview { background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;font-size:0.82rem;max-height:260px;overflow-y:auto; }
+  /* Status badges */
+  .badge-draft    { background:rgba(245,158,11,0.12);color:#b45309;border:1px solid rgba(245,158,11,0.25);border-radius:20px;padding:4px 12px;font-size:0.76rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap; }
+  .badge-sent     { background:rgba(139,92,246,0.12);color:#7c3aed;border:1px solid rgba(139,92,246,0.25);border-radius:20px;padding:4px 12px;font-size:0.76rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap; }
+  .badge-received { background:rgba(16,185,129,0.12);color:#065f46;border:1px solid rgba(16,185,129,0.25);border-radius:20px;padding:4px 12px;font-size:0.76rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap; }
+  .badge-cancelled{ background:rgba(239,68,68,0.12);color:#991b1b;border:1px solid rgba(239,68,68,0.25);border-radius:20px;padding:4px 12px;font-size:0.76rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap; }
+
+    .page-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 24px 28px; color: white;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .page-header::after {
+        content: ''; position: absolute; right: -30px; top: -30px;
+        width: 180px; height: 180px; background: rgba(79,70,229,0.15);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header::before {
+        content: ''; position: absolute; right: 60px; bottom: -50px;
+        width: 120px; height: 120px; background: rgba(99,102,241,0.12);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header h2 { color: white !important; font-weight: 800; margin-bottom: 4px; }
+    .page-header h2 i { opacity: 0.85; }
+    .page-header small, .page-header p.sub { color: #94a3b8 !important; font-size: 0.875rem; margin: 0; }
+    .page-header .header-action { 
+        background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 10px 20px; color: white; font-weight: 600;
+        font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+        position: relative; z-index: 10;
+    }
+    .page-header .header-action:hover {
+        background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5);
+        transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        color: white; text-decoration: none;
+    }
+
+    /* KPI Card borders */
+    .kpi-card, .section-card {
+        border: 1.5px solid rgba(79,70,229,0.15) !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+    }
+    .kpi-card:hover, .section-card:hover {
+        border-color: rgba(79,70,229,0.35) !important;
+        box-shadow: 0 8px 24px rgba(79,70,229,0.12) !important;
+    }
+    .kpi-value { display: block; }
+</style>
+
+<!-- Header -->
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-cart-plus-fill me-2"></i>Purchase Orders</h2>
+            <p class="sub mb-0">Manage supplier orders, email dispatch &amp; stock replenishment</p>
+        </div>
+        <button class="header-action" onclick="openCreateModal()"><i class="bi bi-plus-lg"></i> Create PO</button>
+    </div>
+</div>
+
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm p-3" style="border-radius:var(--radius);">
+      <div class="d-flex align-items-center gap-2">
+        <div class="kpi-icon blue"><i class="bi bi-receipt"></i></div>
+        <div><div class="kpi-label">Total POs</div><div class="kpi-value" id="kpi-total">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm p-3" style="border-radius:var(--radius);">
+      <div class="d-flex align-items-center gap-2">
+        <div class="kpi-icon yellow"><i class="bi bi-pencil-square"></i></div>
+        <div><div class="kpi-label">Draft</div><div class="kpi-value text-warning" id="kpi-draft">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm p-3" style="border-radius:var(--radius);">
+      <div class="d-flex align-items-center gap-2">
+        <div class="kpi-icon purple"><i class="bi bi-send"></i></div>
+        <div><div class="kpi-label">Sent</div><div class="kpi-value text-purple" id="kpi-sent" style="color:#8b5cf6;">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm p-3" style="border-radius:var(--radius);">
+      <div class="d-flex align-items-center gap-2">
+        <div class="kpi-icon green"><i class="bi bi-check-circle"></i></div>
+        <div><div class="kpi-label">Received</div><div class="kpi-value text-success" id="kpi-received">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm p-3" style="border-radius:var(--radius);">
+      <div class="d-flex align-items-center gap-2">
+        <div class="kpi-icon blue"><i class="bi bi-cash-stack"></i>
+</div>
+        <div><div class="kpi-label">Total Value</div><div class="kpi-value" id="kpi-value">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-section mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <div class="input-group">
+        <span class="input-group-text" style="background:var(--bg-subtle);border-color:var(--border);"><i class="bi bi-search text-muted"></i></span>
+        <input type="text" id="po-search" class="form-control border-start-0" placeholder="PO number, supplier, site..." onkeyup="if(event.key==='Enter') loadData(1)">
+      </div>
+    </div>
+    <div class="col-md-3">
+      <select id="po-site" class="form-select" onchange="loadData(1)">
+        <option value="">All Sites</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select id="po-status" class="form-select" onchange="loadData(1)">
+        <option value="">All Status</option>
+        <option value="Draft">Draft</option>
+        <option value="Sent">Sent</option>
+        <option value="Received">Received</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+   <div class="col-md-3">
+  <button 
+    class="btn fw-semibold w-100 d-inline-flex align-items-center justify-content-center gap-2"
+    onclick="loadData(1)"
+    style="
+      background:#5b5ef4;
+      color:#fff;
+      border:none;
+      border-radius:50px;
+      height:45px;
+      font-size:0.97rem;
+      box-shadow:0 2px 8px rgba(91,94,244,0.18);
+      white-space:nowrap;
+    ">
+    <i class="bi bi-funnel"></i>
+    <span>Filter</span>
+  </button>
+</div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light">
+        <tr>
+          <th>#</th>
+          <th>PO Number</th>
+          <th>Supplier</th>
+          <th>Warehouse</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="po-table"></tbody>
+    </table>
+  </div>
+  <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+    <small class="text-muted" id="po-count"></small>
+    <ul class="pagination pagination-sm mb-0" id="po-pagination"></ul>
+  </div>
+</div>
+
+<!-- ── CREATE PO MODAL ─────────────────────────────────────────────────── -->
+<div class="modal fade" id="createModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5><i class="bi bi-cart-plus me-2"></i>Create Purchase Order</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Supplier <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <select id="c-supplier" class="form-select" onchange="onSupplierChange()" required>
+                <option value="">Select Supplier...</option>
+              </select>
+            </div>
+            <div class="mt-1" id="c-supplier-email-hint" style="font-size:0.8rem;color:#64748b;display:none;">
+              <i class="bi bi-envelope me-1"></i><span id="c-supplier-email-val"></span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Warehouse <span class="text-danger">*</span></label>
+            <select id="c-warehouse" class="form-select" required>
+              <option value="">Select Warehouse...</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Order Date</label>
+            <input type="date" id="c-order-date" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Expected Delivery</label>
+            <input type="date" id="c-exp-delivery" class="form-control">
+          </div>
+          <div class="col-md-12">
+            <label class="form-label fw-semibold">Notes</label>
+            <textarea id="c-notes" class="form-control" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0"><i class="bi bi-box-seam me-1"></i>Order Items</h6>
+          <button class="btn btn-sm btn-outline-primary" onclick="addItemRow()"><i class="bi bi-plus"></i> Add Item</button>
+        </div>
+        <div id="items-container"></div>
+        <div class="alert alert-info py-2 mt-2 d-none" id="no-supplier-msg">
+          <i class="bi bi-info-circle me-1"></i> Select a supplier first to load products.
+        </div>
+        <div class="text-end mt-3">
+          <strong>Order Total: ₹<span id="c-total-display">0.00</span></strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreatePO()"><i class="bi bi-floppy me-1"></i>Save Draft</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── VIEW / ACTION MODAL ──────────────────────────────────────────── -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <h5 id="view-title">PO Details</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="view-body">Loading...</div>
+      <div class="modal-footer" id="view-footer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SEND EMAIL MODAL ─────────────────────────────────────────────── -->
+<div class="modal fade" id="emailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5><i class="bi bi-envelope me-2"></i>Send Purchase Order Email</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="email-po-info" class="alert alert-light border mb-3 py-2 px-3" style="font-size:0.85rem;"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Recipient Email <span class="text-danger">*</span></label>
+          <input type="email" id="email-recipient" class="form-control" placeholder="supplier@example.com">
+          <div class="form-text" id="email-hint"></div>
+        </div>
+        <div class="mb-2">
+          <p class="fw-semibold mb-1" style="font-size:0.85rem;"><i class="bi bi-eye me-1"></i>Email Preview</p>
+          <div class="email-preview" id="email-preview-box">Select a PO to preview...</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="email-send-btn" onclick="confirmSendEmail()">
+          <i class="bi bi-send me-1"></i>Send Email &amp; Mark Sent
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let supplierProducts = [];
+let allSuppliers     = [];
+let currentPoId      = null;
+let emailPoData      = null;
+
+// ── INIT ─────────────────────────────────────────────────────────────────
+async function loadPageData() {
+  const _poRole = localStorage.getItem('user_role');
+  if (_poRole === 'Analyst') {
+    // Analyst: view-only — hide Create PO button
+    const btn = document.querySelector('.header-action');
+    if (btn) btn.style.display = 'none';
+  }
+  await Promise.all([loadSites(), loadSummary(), loadSupplierList()]);
+  loadData(1);
+}
+
+async function loadSites() {
+  const res  = await axios.get('/api/purchase-orders/sites');
+  const sel1 = document.getElementById('po-site');
+  const sel2 = document.getElementById('c-warehouse');
+  res.data.data.forEach(s => {
+    sel1.innerHTML += `<option value="${s.site_id}">${s.site_name} (${s.site_id})</option>`;
+    sel2.innerHTML += `<option value="${s.site_id}">${s.site_name} (${s.site_id})</option>`;
+  });
+}
+
+async function loadSupplierList(selectId = null) {
+  const res = await axios.get('/api/purchase-orders/suppliers');
+  allSuppliers = res.data.data;
+  const sel = document.getElementById('c-supplier');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Select Supplier...</option>';
+  allSuppliers.forEach(s => {
+    sel.innerHTML += `<option value="${s.supplier_id}" data-email="${s.contact_email}">${s.supplier_name}</option>`;
+  });
+  if (selectId) sel.value = selectId;
+  else if (prev) sel.value = prev;
+}
+
+async function loadSummary() {
+  const res = await axios.get('/api/purchase-orders/summary');
+  const d   = res.data.data;
+  document.getElementById('kpi-total').textContent    = d.total_orders;
+  document.getElementById('kpi-received').textContent = d.received_orders;
+  document.getElementById('kpi-draft').textContent    = d.draft_orders;
+  document.getElementById('kpi-sent').textContent     = d.sent_orders || 0;
+  document.getElementById('kpi-value').textContent    = '₹' + (d.total_value||0).toLocaleString('en-IN',{maximumFractionDigits:0});
+}
+
+// ── LIST ─────────────────────────────────────────────────────────────────
+async function loadData(page = 1) {
+  const search = document.getElementById('po-search').value;
+  const status = document.getElementById('po-status').value;
+  const site   = document.getElementById('po-site').value;
+  const res    = await axios.get(`/api/purchase-orders?page=${page}&search=${encodeURIComponent(search)}&status=${status}&site_id=${site}`);
+  const d      = res.data.data;
+
+  const statusBadge = s => ({
+    'Draft':     '<span class="badge-draft"><i class="bi bi-pencil me-1"></i>Draft</span>',
+    'Sent':      '<span class="badge-sent"><i class="bi bi-send me-1"></i>Sent</span>',
+    'Received':  '<span class="badge-received"><i class="bi bi-check-circle me-1"></i>Received</span>',
+    'Cancelled': '<span class="badge-cancelled"><i class="bi bi-x-circle me-1"></i>Cancelled</span>',
+  }[s] || `<span class="badge bg-secondary">${s}</span>`);
+
+  document.getElementById('po-table').innerHTML = d.items.length === 0
+    ? '<tr><td colspan="9" class="text-center text-muted py-4">No purchase orders found.</td></tr>'
+    : d.items.map((p, i) => `
+      <tr class="po-row" onclick="viewPO(${p.id})">
+        <td><span class="id-pill">${(page-1)*15+i+1}</span></td>
+        <td><strong>${p.po_number}</strong></td>
+        <td>${p.supplier_name || p.supplier_id || '—'}</td>
+        <td>${p.warehouse_name || p.warehouse_id}</td>
+        <td>${statusBadge(p.status)}</td>
+        <td class="text-end" onclick="event.stopPropagation()">
+          ${(()=>{
+            const _isPOAnalyst = localStorage.getItem('user_role') === 'Analyst';
+            if (p.status==='Draft') return `
+              <div class="d-inline-flex gap-1">
+                <button class="btn btn-sm btn-outline-info" title="View" onclick="event.stopPropagation();viewPO(${p.id})"><i class="bi bi-eye-fill"></i></button>
+                ${!_isPOAnalyst ? `<button class="btn btn-sm btn-outline-primary" title="Send Email" onclick="openEmailModal(${p.id})"><i class="bi bi-envelope-fill"></i></button>` : ''}
+                ${!_isPOAnalyst ? `<button class="btn btn-sm btn-outline-success" title="Mark Received" onclick="receivePO(${p.id})"><i class="bi bi-box-arrow-in-down"></i></button>` : ''}
+                ${!_isPOAnalyst ? `<button class="btn btn-sm btn-outline-danger" title="Cancel PO" onclick="cancelPO(${p.id})"><i class="bi bi-x-circle-fill"></i></button>` : ''}
+              </div>`;
+            if (p.status==='Sent') return `
+              <div class="d-inline-flex gap-1">
+                <button class="btn btn-sm btn-outline-info" title="View" onclick="event.stopPropagation();viewPO(${p.id})"><i class="bi bi-eye-fill"></i></button>
+                ${!_isPOAnalyst ? `<button class="btn btn-sm btn-outline-primary" title="Resend Email" onclick="openEmailModal(${p.id})"><i class="bi bi-envelope-fill"></i></button>` : ''}
+                ${!_isPOAnalyst ? `<button class="btn btn-sm btn-outline-success" title="Mark Received" onclick="receivePO(${p.id})"><i class="bi bi-box-arrow-in-down"></i></button>` : ''}
+                ${!_isPOAnalyst ? `<button class="btn btn-sm btn-outline-danger" title="Cancel PO" onclick="cancelPO(${p.id})"><i class="bi bi-x-circle-fill"></i></button>` : ''}
+              </div>`;
+            return `
+              <div class="d-inline-flex gap-1">
+                <button class="btn btn-sm btn-outline-info" title="View" onclick="event.stopPropagation();viewPO(${p.id})"><i class="bi bi-eye-fill"></i></button>
+              </div>`;
+          })()}
+        </td>
+      </tr>`).join('');
+
+  document.getElementById('po-count').textContent = `Showing ${d.items.length} of ${d.total || 0} orders`;
+  buildPagination(d.current_page, d.pages, 'loadData', 'po-pagination');
+}
+
+// ── CREATE MODAL ─────────────────────────────────────────────────────────
+function openCreateModal() {
+  document.getElementById('c-supplier').value = '';
+  document.getElementById('c-warehouse').value = '';
+  document.getElementById('c-notes').value = '';
+  document.getElementById('c-order-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('c-exp-delivery').value = '';
+  document.getElementById('items-container').innerHTML = '';
+  document.getElementById('c-total-display').textContent = '0.00';
+  document.getElementById('no-supplier-msg').classList.add('d-none');
+  document.getElementById('c-supplier-email-hint').style.display = 'none';
+  supplierProducts = [];
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('createModal')).show();
+}
+
+function onSupplierChange() {
+  const sel = document.getElementById('c-supplier');
+  const opt = sel.options[sel.selectedIndex];
+  const email = opt.dataset.email || '';
+  const hint  = document.getElementById('c-supplier-email-hint');
+  if (email) {
+    document.getElementById('c-supplier-email-val').textContent = email;
+    hint.style.display = '';
+  } else {
+    hint.style.display = 'none';
+  }
+  loadSupplierProducts();
+}
+
+async function loadSupplierProducts() {
+  const supplierId = document.getElementById('c-supplier').value;
+  if (!supplierId) { supplierProducts = []; return; }
+  const res = await axios.get(`/api/purchase-orders/products?supplier_id=${supplierId}`);
+  supplierProducts = res.data.data;
+  document.getElementById('items-container').innerHTML = '';
+  document.getElementById('no-supplier-msg').classList.add('d-none');
+  addItemRow();
+}
+
+function addItemRow() {
+  if (!document.getElementById('c-supplier').value) {
+    document.getElementById('no-supplier-msg').classList.remove('d-none');
+    return;
+  }
+  const opts = supplierProducts.map(p =>
+    `<option value="${p.product_id}" data-cost="${p.unit_cost}">${p.product_name} (${p.product_id})</option>`
+  ).join('');
+  const row = document.createElement('div');
+  row.className = 'item-row row g-2 mb-2 align-items-end';
+  row.innerHTML = `
+    <div class="col-md-5">
+      <select class="form-select item-product" onchange="onProductChange(this)">
+        <option value="">Select Product...</option>${opts}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <input type="number" min="1" value="1" class="form-control item-qty" placeholder="Qty" oninput="recalcTotal()">
+    </div>
+    <div class="col-md-3">
+      <div class="input-group">
+        <span class="input-group-text">₹</span>
+        <input type="number" min="0" step="0.01" class="form-control item-price" placeholder="Unit Cost" oninput="recalcTotal()">
+      </div>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-outline-danger w-100" onclick="this.closest('.item-row').remove(); recalcTotal()"><i class="bi bi-trash"></i></button>
+    </div>`;
+  document.getElementById('items-container').appendChild(row);
+}
+
+function onProductChange(sel) {
+  const cost = sel.options[sel.selectedIndex].dataset.cost || 0;
+  sel.closest('.item-row').querySelector('.item-price').value = cost;
+  recalcTotal();
+}
+
+function recalcTotal() {
+  let total = 0;
+  document.querySelectorAll('.item-row').forEach(row => {
+    total += (parseFloat(row.querySelector('.item-qty').value)||0) * (parseFloat(row.querySelector('.item-price').value)||0);
+  });
+  document.getElementById('c-total-display').textContent = total.toFixed(2);
+}
+
+async function submitCreatePO() {
+  const supplierId = document.getElementById('c-supplier').value;
+  const warehouse  = document.getElementById('c-warehouse').value;
+  const orderDate  = document.getElementById('c-order-date').value;
+  const expDel     = document.getElementById('c-exp-delivery').value;
+  const notes      = document.getElementById('c-notes').value;
+
+  if (!supplierId || !warehouse) { alert('Please select Supplier and Warehouse.'); return; }
+
+  const items = [];
+  let valid = true;
+  document.querySelectorAll('.item-row').forEach(row => {
+    const pid   = row.querySelector('.item-product').value;
+    const qty   = parseInt(row.querySelector('.item-qty').value);
+    const price = parseFloat(row.querySelector('.item-price').value);
+    if (!pid || qty <= 0) { valid = false; return; }
+    items.push({ product_id: pid, quantity: qty, unit_price: price || 0 });
+  });
+
+  if (!valid || items.length === 0) { alert('Please add at least one valid product with quantity.'); return; }
+
+  try {
+    const res = await axios.post('/api/purchase-orders', {
+      supplier_id: parseInt(supplierId), warehouse_id: warehouse,
+      order_date: orderDate, expected_delivery: expDel || null, notes, items
+    });
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('createModal')).hide();
+    loadData(1); loadSummary();
+    // Offer to send email immediately
+    const poId = res.data.po_id;
+    if (confirm(`PO ${res.data.message.split(' ')[2]} created!\n\nSend email to supplier now?`)) {
+      openEmailModal(poId);
+    }
+  } catch (e) {
+    alert(e.response?.data?.message || 'Failed to create PO');
+  }
+}
+
+// ── VIEW DETAIL ───────────────────────────────────────────────────────────
+async function viewPO(id) {
+  currentPoId = id;
+  const res = await axios.get(`/api/purchase-orders/${id}`);
+  const po  = res.data.data;
+
+  const statusBadge = s => ({
+    'Draft':     '<span class="badge-draft"><i class="bi bi-pencil me-1"></i>Draft</span>',
+    'Sent':      '<span class="badge-sent"><i class="bi bi-send me-1"></i>Sent</span>',
+    'Received':  '<span class="badge-received"><i class="bi bi-check-circle me-1"></i>Received</span>',
+    'Cancelled': '<span class="badge-cancelled"><i class="bi bi-x-circle me-1"></i>Cancelled</span>',
+  }[s] || `<span class="badge bg-secondary">${s}</span>`);
+
+  document.getElementById('view-title').innerHTML = `<i class="bi bi-receipt me-2"></i>${po.po_number}`;
+
+  const itemRows = (po.items || []).map(it => `
+    <tr>
+      <td><span class="id-pill">${it.product_id}</span></td>
+      <td>${it.product_name}</td>
+      <td>${it.category}</td>
+      <td class="text-center">${it.quantity}</td>
+      <td class="text-center">${it.received_quantity}</td>
+      <td class="text-center">${it.pending}</td>
+      <td class="text-end">₹${(it.unit_price||0).toFixed(2)}</td>
+      <td class="text-end">₹${(it.line_total||0).toFixed(2)}</td>
+    </tr>`).join('');
+
+  // Status timeline
+  const steps = ['Draft','Sent','Received'];
+  const cur   = steps.indexOf(po.status);
+  const timeline = steps.map((s,i) => {
+    const cls = i < cur ? 'done' : i === cur ? 'active' : 'idle';
+    return `<span class="flow-step ${cls}"><span class="dot">${i+1}</span>${s}</span>${i<2?'<span class="flow-arrow">›</span>':''}`;
+  }).join('');
+
+  document.getElementById('view-body').innerHTML = `
+    <div class="d-flex flex-wrap align-items-center gap-1 mb-3 p-2 bg-light rounded">${timeline}</div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4"><strong>Supplier:</strong><br>${po.supplier_name || po.supplier_id || '—'}
+        ${po.supplier_email ? `<br><small class="text-muted"><i class="bi bi-envelope me-1"></i>${po.supplier_email}</small>` : ''}</div>
+      <div class="col-md-4"><strong>Warehouse:</strong><br>${po.warehouse_name || po.warehouse_id}</div>
+      <div class="col-md-4"><strong>Status:</strong><br>${statusBadge(po.status)}</div>
+      <div class="col-md-4"><strong>Order Date:</strong><br>${po.order_date || '—'}</div>
+      <div class="col-md-4"><strong>Expected Delivery:</strong><br>${po.expected_delivery || '—'}</div>
+      <div class="col-md-4"><strong>Total Amount:</strong><br><strong>₹${(po.total_amount||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</strong></div>
+      ${po.notes ? `<div class="col-12"><strong>Notes:</strong><br>${po.notes}</div>` : ''}
+    </div>
+    <h6><i class="bi bi-box-seam me-1"></i>Order Items</h6>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered align-middle">
+        <thead class="table-light">
+          <tr><th>Product ID</th><th>Name</th><th>Category</th><th class="text-center">Ordered</th><th class="text-center">Received</th><th class="text-center">Pending</th><th class="text-end">Unit Price</th><th class="text-end">Line Total</th></tr>
+        </thead>
+        <tbody>${itemRows || '<tr><td colspan="8" class="text-center text-muted">No items</td></tr>'}</tbody>
+      </table>
+    </div>`;
+
+  const footer = document.getElementById('view-footer');
+  const _viewPOIsAnalyst = localStorage.getItem('user_role') === 'Analyst';
+  footer.innerHTML = '<button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>';
+  footer.innerHTML += `<button class="btn btn-outline-secondary btn-sm ms-2" title="Download Invoice PDF"
+                          onclick="downloadInvoice(${id},'${po.po_number}.pdf')">
+                          <i class="bi bi-file-earmark-pdf me-1"></i>Download Invoice</button>`;
+  if (!_viewPOIsAnalyst && (po.status === 'Draft' || po.status === 'Sent')) {
+    footer.innerHTML += `
+      <button class="btn-advanced-secondary ms-2" onclick="openEmailModal(${id}, true)"><i class="bi bi-envelope me-1"></i>${po.status==='Sent'?'Resend Email':'Send Email'}</button>
+      <button class="btn-advanced-primary ms-2" onclick="receivePO(${id}, true)"><i class="bi bi-box-arrow-in-down me-1"></i>Mark Received</button>
+      <button style="margin-left:8px;" class="btn btn-sm btn-danger" onclick="cancelPO(${id}, true)"><i class="bi bi-x-circle me-1"></i>Cancel</button>`;
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('viewModal')).show();
+}
+
+// ── EMAIL MODAL ───────────────────────────────────────────────────────────
+async function openEmailModal(id, fromView = false) {
+  const res = await axios.get(`/api/purchase-orders/${id}`);
+  const po  = res.data.data;
+  emailPoData = po;
+  currentPoId = id;
+
+  document.getElementById('email-po-info').innerHTML =
+    `<strong>${po.po_number}</strong> &nbsp;|&nbsp; Supplier: <strong>${po.supplier_name || '—'}</strong> &nbsp;|&nbsp; Total: <strong>₹${(po.total_amount||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</strong>`;
+
+  const emailInput = document.getElementById('email-recipient');
+  const hint       = document.getElementById('email-hint');
+  emailInput.value = po.supplier_email || '';
+  if (po.supplier_email) {
+    hint.innerHTML = `<i class="bi bi-check-circle text-success me-1"></i>Using saved email: <strong>${po.supplier_email}</strong>`;
+  } else {
+    hint.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>No saved email for this supplier. Please enter one.</span>`;
+  }
+
+  // Build preview
+  const itemList = (po.items || []).map(it =>
+    `<tr><td style="padding:4px 8px;border:1px solid #e2e8f0;">${it.product_name}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;">${it.quantity}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">₹${(it.unit_price||0).toFixed(2)}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">₹${(it.line_total||0).toFixed(2)}</td></tr>`
+  ).join('');
+
+  document.getElementById('email-preview-box').innerHTML = `
+    <div style="font-family:Arial,sans-serif;font-size:0.83rem;">
+      <p><strong>To:</strong> ${po.supplier_name}</p>
+      <p><strong>Subject:</strong> Purchase Order ${po.po_number} – ${po.supplier_name}</p>
+      <hr style="margin:8px 0;">
+      <p>Dear <strong>${po.supplier_name}</strong>,</p>
+      <p>Please find our Purchase Order details below:</p>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin:8px 0;">
+        <tr style="background:#f1f5f9;"><th style="padding:4px 8px;border:1px solid #e2e8f0;text-align:left;">Product</th><th style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;">Qty</th><th style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">Unit Cost</th><th style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">Total</th></tr>
+        ${itemList}
+        <tr style="font-weight:700;background:#f8fafc;"><td colspan="3" style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">Grand Total</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">₹${(po.total_amount||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</td></tr>
+      </table>
+      ${po.notes ? `<p><strong>Notes:</strong> ${po.notes}</p>` : ''}
+      <p style="color:#64748b;font-size:0.78rem;">— Automated notification from Inventory Management System</p>
+    </div>`;
+
+  if (fromView) bootstrap.Modal.getOrCreateInstance(document.getElementById('viewModal')).hide();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('emailModal')).show();
+}
+
+async function confirmSendEmail() {
+  const recipient = document.getElementById('email-recipient').value.trim();
+  if (!recipient) { alert('Please enter a recipient email address.'); return; }
+
+  const btn = document.getElementById('email-send-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sending...';
+
+  try {
+    const res = await axios.post(`/api/purchase-orders/${currentPoId}/send-email`, { recipient_email: recipient });
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('emailModal')).hide();
+    alert(`✅ ${res.data.message}`);
+    loadData(1); loadSummary();
+  } catch (e) {
+    alert('❌ ' + (e.response?.data?.message || 'Failed to send email'));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-send me-1"></i>Send Email &amp; Mark Sent';
+  }
+}
+
+// ── RECEIVE ───────────────────────────────────────────────────────────────
+async function receivePO(id, fromView = false) {
+  if (!confirm('Mark this PO as Received?\n\nThis will update inventory records and stock levels. This action cannot be undone.')) return;
+  try {
+    const res = await axios.post(`/api/purchase-orders/${id}/receive`, {});
+    alert('✅ ' + res.data.message);
+    if (fromView) bootstrap.Modal.getOrCreateInstance(document.getElementById('viewModal')).hide();
+    loadData(1); loadSummary();
+  } catch (e) {
+    alert('❌ ' + (e.response?.data?.message || 'Failed to receive PO'));
+  }
+}
+
+// ── CANCEL ────────────────────────────────────────────────────────────────
+async function cancelPO(id, fromView = false) {
+  if (!confirm('Cancel this Purchase Order? This action cannot be undone.')) return;
+  try {
+    const res = await axios.post(`/api/purchase-orders/${id}/cancel`, {});
+    alert(res.data.message);
+    if (fromView) bootstrap.Modal.getOrCreateInstance(document.getElementById('viewModal')).hide();
+    loadData(1); loadSummary();
+  } catch (e) {
+    alert(e.response?.data?.message || 'Failed to cancel PO');
+  }
+}
+
+// ── ADD SUPPLIER ──────────────────────────────────────────────────────────
+function openAddSupplierModal() {
+  document.getElementById('ns-name').value  = '';
+  document.getElementById('ns-email').value = '';
+  document.getElementById('ns-msg').textContent = '';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('addSupplierModal')).show();
+}
+
+async function saveNewSupplier() {
+  const name  = document.getElementById('ns-name').value.trim();
+  const email = document.getElementById('ns-email').value.trim();
+  const msg   = document.getElementById('ns-msg');
+  if (!name) { msg.textContent = 'Supplier name is required.'; msg.className='text-danger'; return; }
+  try {
+    const res = await axios.post('/api/products/suppliers/add', { supplier_name: name, contact_email: email || null });
+    // Reload supplier list and auto-select the new one
+    const newId = res.data.supplier_id;
+    await loadSupplierList(newId);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addSupplierModal')).hide();
+    onSupplierChange();
+  } catch (e) {
+    msg.textContent = e.response?.data?.message || 'Error saving supplier.';
+    msg.className = 'text-danger';
+  }
+}
+
+function buildPagination(current, total, loadFn, containerId) {
+    if (total <= 1) { document.getElementById(containerId).innerHTML = ''; return; }
+    let h = '';
+    if (current > 1)  h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current-1});return false;">‹</a></li>`;
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="${loadFn}(${i});return false;">${i}</a></li>`;
+        } else if (Math.abs(i - current) === 3) {
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+        }
+    }
+    if (current < total) h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current+1});return false;">›</a></li>`;
+    document.getElementById(containerId).innerHTML = h;
+}
+
+async function downloadInvoice(id, filename) {
+    try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`/api/purchase-orders/${id}/invoice`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) { alert('Failed to download invoice.'); return; }
+        const blob = await response.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) { alert('Error downloading invoice: ' + e.message); }
+}
+</script>
+<!-- ── ADD SUPPLIER MODAL ────────────────────────────────────────────── -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-success text-white">
+        <h5><i class="bi bi-person-plus-fill me-2"></i>Add New Supplier</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Supplier Name <span class="text-danger">*</span></label>
+          <input type="text" id="ns-name" class="form-control" placeholder="e.g. Acme Supplies Ltd.">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Supplier Email</label>
+          <input type="email" id="ns-email" class="form-control" placeholder="supplier@example.com">
+        </div>
+        <small id="ns-msg" class="text-danger"></small>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success" onclick="saveNewSupplier()"><i class="bi bi-check-lg me-1"></i>Save Supplier</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

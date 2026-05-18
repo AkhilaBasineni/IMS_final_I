@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.section-card{border-radius:14px!important;border:1.5px solid rgba(79,70,229,.15)!important;box-shadow:0 2px 12px rgba(0,0,0,.06)!important;transition:border-color .2s,box-shadow .2s;}
+.section-card:hover{border-color:rgba(79,70,229,.35)!important;box-shadow:0 8px 24px rgba(79,70,229,.12)!important;}
+.kpi-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:1.2rem;}
+.kpi-icon.blue  {background:rgba(59,130,246,.12);color:#3b82f6;}
+.kpi-icon.green {background:rgba(16,185,129,.12);color:#10b981;}
+.kpi-icon.red   {background:rgba(239,68,68,.12);color:#ef4444;}
+.kpi-icon.purple{background:rgba(139,92,246,.12);color:#8b5cf6;}
+.kpi-value{font-size:1.5rem;font-weight:800;line-height:1.1;color:#0f172a;}
+.kpi-label{font-size:.73rem;color:#64748b;font-weight:500;text-transform:uppercase;letter-spacing:.04em;}
+.id-pill{font-family:monospace;background:#f1f5f9;color:#475569;border-radius:5px;padding:1px 7px;font-size:.78rem;}
+.stat-box{background:#f8fafc;border-radius:10px;padding:12px 14px;text-align:center;border:1px solid #e2e8f0;}
+.stat-box .val{font-size:1.3rem;font-weight:800;}
+.stat-box .lbl{font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
+.page-header{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:20px;padding:24px 28px;color:white;margin-bottom:24px;position:relative;overflow:hidden;}
+.page-header::after{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;background:rgba(79,70,229,.15);border-radius:50%;pointer-events:none;}
+.page-header::before{content:'';position:absolute;right:60px;bottom:-50px;width:120px;height:120px;background:rgba(99,102,241,.12);border-radius:50%;pointer-events:none;}
+.page-header h2{color:white!important;font-weight:800;margin-bottom:4px;}
+.page-header p.sub{color:#94a3b8!important;font-size:.875rem;margin:0;}
+.header-action{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:12px;padding:10px 20px;color:white;font-weight:600;font-size:.85rem;transition:all .3s;cursor:pointer;display:inline-flex;align-items:center;gap:8px;backdrop-filter:blur(10px);position:relative;z-index:10;}
+.header-action:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5);transform:translateY(-2px);color:white;text-decoration:none;}
+.detail-section-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:12px;padding-bottom:6px;border-bottom:1.5px solid #e2e8f0;}
+.info-row{display:flex;flex-direction:column;gap:2px;padding:10px 14px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;}
+.info-row .lbl{font-size:.7rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.info-row .val{font-size:.93rem;font-weight:600;color:#0f172a;}
+.order-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:8px;}
+.order-row:hover{border-color:#c7d2fe;background:#eef2ff;}
+.modal-header-grad{background:linear-gradient(135deg,#1e293b,#4f46e5);color:white;}
+.modal-header-grad .btn-close{filter:invert(1);}
+.badge-active   {background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;display:inline-block;padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:700;}
+.badge-inactive {background:#fee2e2;color:#991b1b;border:1px solid #fecaca;display:inline-block;padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:700;}
+.form-label{font-size:.82rem;font-weight:600;color:#374151;margin-bottom:4px;}
+</style>
+
+<!-- Header -->
+<div class="page-header">
+  <div class="d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="mb-1"><i class="bi bi-truck me-2"></i>Suppliers</h2>
+      <p class="sub mb-0">Manage supplier profiles and view purchase order history</p>
+    </div>
+    <button class="header-action" id="btn-new-supplier" style="display:none" onclick="openCreateModal()">
+      <i class="bi bi-plus-lg"></i> New Supplier
+    </button>
+  </div>
+</div>
+
+<!-- KPI Cards — Row 1: Total Suppliers + Total PO Value -->
+<div class="row g-3 mb-3">
+  <div class="col-6">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon blue"><i class="bi bi-truck"></i></div>
+        <div><div class="kpi-label">Total Suppliers</div><div class="kpi-value" id="kpi-total">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon purple"><i class="bi bi-cash-stack"></i></div>
+        <div><div class="kpi-label">Total PO Value</div><div class="kpi-value" id="kpi-po-value">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Cards — Row 2: Active + Inactive -->
+<div class="row g-3 mb-4">
+  <div class="col-6">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon green"><i class="bi bi-check-circle"></i></div>
+        <div><div class="kpi-label">Active</div><div class="kpi-value" id="kpi-active">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6">
+    <div class="card section-card p-3 border-0">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon red"><i class="bi bi-x-circle"></i></div>
+        <div><div class="kpi-label">Inactive</div><div class="kpi-value" id="kpi-inactive">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card section-card p-3 mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-5">
+      <div class="input-group">
+        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+        <input type="text" id="s-search" class="form-control border-start-0"
+               placeholder="Search by name or email…"
+               onkeyup="if(event.key==='Enter') loadData(1)">
+      </div>
+    </div>
+    <div class="col-md-3">
+      <select id="s-status" class="form-select" onchange="loadData(1)">
+        <option value="">All Status</option>
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <button type="button" class="btn fw-semibold d-flex align-items-center justify-content-center gap-2"
+        onclick="loadData(1)"
+        style="background:#5b5ef4;color:#fff;border:none;border-radius:50px;height:45px;font-size:0.97rem;box-shadow:0 2px 8px rgba(91,94,244,0.18);">
+        <i class="bi bi-funnel"></i><span>Filter</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card section-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" style="font-size:.87rem;">
+      <thead class="bg-light">
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Supplier Name</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th class="text-end pe-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="s-table">
+        <tr><td colspan="5" class="text-center text-muted py-4">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+    <small class="text-muted" id="s-count"></small>
+    <ul class="pagination pagination-sm mb-0" id="s-pagination"></ul>
+  </div>
+</div>
+
+
+<!-- DETAIL MODAL -->
+<div class="modal fade" id="supplierModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header modal-header-grad">
+        <h5 class="mb-0 fw-bold" id="sup-modal-title"><i class="bi bi-truck me-2"></i>Supplier Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="sup-detail-body">
+        <div class="text-center py-5"><span class="spinner-border text-primary"></span></div>
+      </div>
+      <div class="modal-footer border-0" id="sup-modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- CREATE / EDIT MODAL -->
+<div class="modal fade" id="formModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header modal-header-grad">
+        <h5 class="mb-0 fw-bold" id="form-modal-title"><i class="bi bi-plus-lg me-2"></i>New Supplier</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Supplier Name <span class="text-danger">*</span></label>
+            <input type="text" id="f-name" class="form-control form-control-sm" placeholder="e.g. Reliance Industries">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Contact Email</label>
+            <input type="email" id="f-email" class="form-control form-control-sm" placeholder="e.g. supply@reliance.com">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Status</label>
+            <select id="f-status" class="form-select form-select-sm">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div id="form-error" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary btn-sm px-4" id="btn-save" onclick="saveSupplier()">
+          <i class="bi bi-check-lg me-1"></i>Create Supplier
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0" style="background:#fee2e2;">
+        <h6 class="mb-0 fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Supplier</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-3">
+        <p class="mb-1">Are you sure you want to delete <strong id="delete-sid"></strong>?</p>
+        <p class="text-danger small mb-0">This action cannot be undone. Suppliers with purchase orders cannot be deleted — set them to Inactive instead.</p>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger btn-sm px-4" onclick="confirmDelete()"><i class="bi bi-trash me-1"></i>Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+let currentPage = 1;
+let editingId   = null;
+let deletingId  = null;
+
+function fmt(n) { return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 }); }
+
+// ── BOOT ──────────────────────────────────────────────────────────────────
+function loadPageData() {
+  const role = localStorage.getItem('user_role');
+  if (['Admin', 'Manager'].includes(role)) {
+    document.getElementById('btn-new-supplier').style.display = 'inline-flex';
+  }
+  loadSummary();
+  loadData(1);
+}
+
+// ── SUMMARY ───────────────────────────────────────────────────────────────
+async function loadSummary() {
+  try {
+    const res = await axios.get('/api/suppliers/summary');
+    const d   = res.data.data;
+    document.getElementById('kpi-total').innerText    = d.total_suppliers.toLocaleString();
+    document.getElementById('kpi-active').innerText   = d.active_suppliers.toLocaleString();
+    document.getElementById('kpi-inactive').innerText = d.inactive_suppliers.toLocaleString();
+    document.getElementById('kpi-po-value').innerText = fmt(d.total_po_value);
+  } catch(e) {}
+}
+
+// ── TABLE ─────────────────────────────────────────────────────────────────
+async function loadData(page = 1) {
+  currentPage = page;
+  const search = document.getElementById('s-search').value.trim();
+  const status = document.getElementById('s-status').value;
+  const params = new URLSearchParams({ page });
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
+
+  document.getElementById('s-table').innerHTML =
+    `<tr><td colspan="5" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>`;
+
+  try {
+    const res  = await axios.get(`/api/suppliers?${params}`);
+    const data = res.data.data;
+    const role = localStorage.getItem('user_role');
+
+    document.getElementById('s-count').innerText =
+      `Showing ${data.items.length} of ${data.total.toLocaleString()} suppliers`;
+
+    if (!data.items.length) {
+      document.getElementById('s-table').innerHTML =
+        `<tr><td colspan="5" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No suppliers found.</td></tr>`;
+    } else {
+      document.getElementById('s-table').innerHTML = data.items.map((s, idx) => `
+        <tr>
+          <td class="text-muted" style="font-size:.8rem">${(page-1)*15+idx+1}</td>
+          <td><span class="fw-600">${s.supplier_name}</span></td>
+          <td class="text-muted" style="font-size:.83rem;">${s.contact_email
+            ? `<a href="mailto:${s.contact_email}" class="text-primary text-decoration-none">${s.contact_email}</a>`
+            : '—'}</td>
+          <td>${s.status === 'Active'
+            ? `<span class="badge-active">Active</span>`
+            : `<span class="badge-inactive">Inactive</span>`}</td>
+          <td class="text-end pe-3">
+            <div class="d-inline-flex gap-1">
+              <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="viewSupplier(${s.supplier_id})" title="View details"><i class="bi bi-eye"></i></button>
+              ${['Admin','Manager'].includes(role) ? `<button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="openEditModal(${s.supplier_id})" title="Edit"><i class="bi bi-pencil"></i></button>` : ''}
+              ${['Admin'].includes(role) ? `<button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="promptDelete(${s.supplier_id}, '${s.supplier_name.replace(/'/g,"\\'")}')"><i class="bi bi-trash"></i></button>` : ''}
+            </div>
+          </td>
+        </tr>`).join('');
+    }
+    buildPagination(page, data.pages);
+  } catch(e) {
+    document.getElementById('s-table').innerHTML =
+      `<tr><td colspan="5" class="text-center text-danger py-4">Failed to load suppliers.</td></tr>`;
+  }
+}
+
+// ── VIEW DETAIL ───────────────────────────────────────────────────────────
+async function viewSupplier(supplierId) {
+  document.getElementById('sup-modal-title').innerHTML = `<i class="bi bi-truck me-2"></i>Supplier Detail`;
+  document.getElementById('sup-detail-body').innerHTML =
+    `<div class="text-center py-5"><span class="spinner-border text-primary"></span></div>`;
+  document.getElementById('sup-modal-footer').innerHTML =
+    `<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>`;
+  new bootstrap.Modal(document.getElementById('supplierModal')).show();
+
+  try {
+    const res  = await axios.get(`/api/suppliers/${supplierId}`);
+    const s    = res.data.data;
+    const st   = s.stats || {};
+    const role = localStorage.getItem('user_role');
+
+    document.getElementById('sup-modal-title').innerHTML =
+      `<i class="bi bi-truck me-2"></i><strong>${s.supplier_name}</strong>`;
+
+    let footer = `<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>`;
+    if (['Admin','Manager'].includes(role))
+      footer += `<button class="btn btn-outline-primary btn-sm ms-2" onclick="openEditModal(${s.supplier_id});bootstrap.Modal.getInstance(document.getElementById('supplierModal')).hide()"><i class="bi bi-pencil me-1"></i>Edit</button>`;
+    if (['Admin'].includes(role))
+      footer += `<button class="btn btn-outline-danger btn-sm ms-2" onclick="promptDelete(${s.supplier_id},'${s.supplier_name.replace(/'/g,"\\'")}');bootstrap.Modal.getInstance(document.getElementById('supplierModal')).hide()"><i class="bi bi-trash me-1"></i>Delete</button>`;
+    document.getElementById('sup-modal-footer').innerHTML = footer;
+
+    const profileHtml = `
+      <div class="detail-section-title"><i class="bi bi-truck me-1"></i>Profile</div>
+      <div class="row g-2 mb-4">
+        <div class="col-6 col-md-4"><div class="info-row"><div class="lbl">Supplier Name</div><div class="val">${s.supplier_name}</div></div></div>
+        <div class="col-6 col-md-4"><div class="info-row"><div class="lbl">Contact Email</div><div class="val" style="font-size:.83rem;">${s.contact_email
+          ? `<a href="mailto:${s.contact_email}" class="text-primary text-decoration-none">${s.contact_email}</a>`
+          : '<span class="text-muted fw-normal">—</span>'}</div></div></div>
+        <div class="col-6 col-md-4"><div class="info-row"><div class="lbl">Status</div><div class="val">${s.status === 'Active'
+          ? `<span class="badge-active">Active</span>`
+          : `<span class="badge-inactive">Inactive</span>`}</div></div></div>
+        <div class="col-6 col-md-4"><div class="info-row"><div class="lbl">Since</div><div class="val">${s.created_at || '—'}</div></div></div>
+      </div>`;
+
+    const statsHtml = `
+      <div class="detail-section-title"><i class="bi bi-bar-chart me-1"></i>Purchase Activity</div>
+      <div class="row g-2 mb-4">
+        <div class="col-6 col-md-3"><div class="stat-box"><div class="lbl">Total POs</div><div class="val text-primary">${(st.total_orders||0).toLocaleString()}</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-box"><div class="lbl">Products Supplied</div><div class="val text-success">${(st.product_count||0).toLocaleString()}</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-box"><div class="lbl">Total PO Value</div><div class="val" style="font-size:1rem;">${fmt(st.total_value||0)}</div></div></div>
+      </div>`;
+
+    const recentPos = (s.recent_orders || []).map(po => `
+      <div class="order-row">
+        <div>
+          <span class="id-pill">${po.po_number}</span>
+          <span class="text-muted ms-2" style="font-size:.78rem;">${po.order_date}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-light text-dark border" style="font-size:.72rem;">${po.status}</span>
+          <span class="fw-700" style="font-size:.88rem;">${fmt(po.total_amount)}</span>
+        </div>
+      </div>`).join('') || '<div class="text-muted text-center py-3">No purchase orders yet</div>';
+
+    const recentHtml = `
+      <div class="detail-section-title"><i class="bi bi-cart-plus me-1"></i>Recent Purchase Orders</div>
+      <div class="mb-4">${recentPos}</div>`;
+
+    const productsHtml = s.products && s.products.length ? `
+      <div class="detail-section-title"><i class="bi bi-box me-1"></i>Products Supplied (${s.products.length})</div>
+      <div class="table-responsive mb-2">
+        <table class="table table-sm" style="font-size:.82rem;">
+          <thead><tr class="table-light"><th>Product</th><th>Category</th><th class="text-end">Unit Cost</th></tr></thead>
+          <tbody>
+            ${s.products.map(p => `
+              <tr>
+                <td><span class="id-pill">${p.product_id}</span> <span class="ms-1">${p.product_name}</span></td>
+                <td class="text-muted">${p.category || '—'}</td>
+                <td class="text-end fw-600">${fmt(p.unit_cost)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : '';
+
+    document.getElementById('sup-detail-body').innerHTML = profileHtml + statsHtml + recentHtml + productsHtml;
+
+  } catch(e) {
+    document.getElementById('sup-detail-body').innerHTML =
+      `<div class="text-danger text-center py-3">Failed to load supplier detail.</div>`;
+  }
+}
+
+// ── CREATE / EDIT MODALS ──────────────────────────────────────────────────
+function openCreateModal() {
+  editingId = null;
+  document.getElementById('form-modal-title').innerHTML = `<i class="bi bi-plus-lg me-2"></i>New Supplier`;
+  document.getElementById('btn-save').innerHTML = `<i class="bi bi-check-lg me-1"></i>Create Supplier`;
+  clearForm();
+  new bootstrap.Modal(document.getElementById('formModal')).show();
+}
+
+async function openEditModal(supplierId) {
+  editingId = supplierId;
+  document.getElementById('form-modal-title').innerHTML = `<i class="bi bi-pencil me-2"></i>Edit Supplier`;
+  document.getElementById('btn-save').innerHTML = `<i class="bi bi-check-lg me-1"></i>Save Changes`;
+  clearForm();
+  try {
+    const res = await axios.get(`/api/suppliers/${supplierId}`);
+    const s   = res.data.data;
+    document.getElementById('f-name').value   = s.supplier_name || '';
+    document.getElementById('f-email').value  = s.contact_email || '';
+    document.getElementById('f-status').value = s.status || 'Active';
+  } catch(e) {}
+  new bootstrap.Modal(document.getElementById('formModal')).show();
+}
+
+function clearForm() {
+  document.getElementById('f-name').value  = '';
+  document.getElementById('f-email').value = '';
+  document.getElementById('f-status').value = 'Active';
+  document.getElementById('form-error').classList.add('d-none');
+}
+
+async function saveSupplier() {
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  document.getElementById('form-error').classList.add('d-none');
+
+  const payload = {
+    supplier_name: document.getElementById('f-name').value.trim(),
+    contact_email: document.getElementById('f-email').value.trim(),
+    status:        document.getElementById('f-status').value,
+  };
+
+  try {
+    const res = editingId
+      ? await axios.put(`/api/suppliers/${editingId}`, payload)
+      : await axios.post('/api/suppliers', payload);
+
+    if (res.data.success) {
+      bootstrap.Modal.getInstance(document.getElementById('formModal')).hide();
+      loadData(currentPage);
+      loadSummary();
+      showToast(res.data.message || 'Saved', 'success');
+    } else {
+      showFormError(res.data.message || 'An error occurred');
+    }
+  } catch(e) {
+    showFormError(e.response?.data?.message || 'An error occurred');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showFormError(msg) {
+  const el = document.getElementById('form-error');
+  el.textContent = msg;
+  el.classList.remove('d-none');
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────────
+function promptDelete(supplierId, name) {
+  deletingId = supplierId;
+  document.getElementById('delete-sid').textContent = name || supplierId;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+async function confirmDelete() {
+  if (!deletingId) return;
+  try {
+    const res = await axios.delete(`/api/suppliers/${deletingId}`);
+    if (res.data.success) {
+      bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+      loadData(currentPage);
+      loadSummary();
+      showToast(res.data.message || 'Supplier deleted', 'success');
+    } else {
+      showToast(res.data.message || 'Delete failed', 'error');
+    }
+  } catch(e) {
+    showToast(e.response?.data?.message || 'Delete failed', 'error');
+  } finally {
+    deletingId = null;
+  }
+}
+
+// ── PAGINATION ────────────────────────────────────────────────────────────
+function buildPagination(current, total) {
+  const el = document.getElementById('s-pagination');
+  if (total <= 1) { el.innerHTML = ''; return; }
+  let h = '';
+  if (current > 1)
+    h += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${current-1});return false;">‹</a></li>`;
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || Math.abs(i - current) <= 2)
+      h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="loadData(${i});return false;">${i}</a></li>`;
+    else if (Math.abs(i - current) === 3)
+      h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+  }
+  if (current < total)
+    h += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${current+1});return false;">›</a></li>`;
+  el.innerHTML = h;
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;
+    color:white;font-size:.87rem;font-weight:600;display:flex;align-items:center;gap:10px;
+    background:${type==='success'?'#10b981':'#ef4444'};box-shadow:0 4px 20px rgba(0,0,0,.15);`;
+  t.innerHTML = `<i class="bi bi-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${msg}`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,1288 @@
+{% extends "base.html" %}
+
+{% block title %}Data Analyst Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .kpi-card { border-radius: 16px; padding: 20px 22px; background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 2px 12px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 18px; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.09) !important; }
+    .kpi-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+    .kpi-body { flex: 1; min-width: 0; }
+    .kpi-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; color: #94a3b8; margin-bottom: 4px; }
+    .kpi-val { font-size: 1.8rem; font-weight: 800; color: #0f172a; line-height: 1; }
+
+    .chart-card { border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .chart-card .card-header { background: transparent; border-bottom: 1px solid #f1f5f9; padding: 18px 22px 14px; }
+    .chart-card .card-header h6 { font-weight: 700; font-size: 0.9rem; margin: 0; letter-spacing: 0.2px; }
+    .chart-card .card-body { padding: 20px; }
+
+    .live-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.7rem; font-weight: 700; color: #10b981; background: #d1fae5; padding: 3px 10px; border-radius: 20px; }
+    .live-dot { width: 7px; height: 7px; background: #10b981; border-radius: 50%; animation: pulse-dot 1.5s infinite; }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
+
+    .stock-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+    .badge-healthy { background: #d1fae5; color: #065f46; }
+    .badge-low { background: #fef3c7; color: #92400e; }
+    .badge-critical { background: #fee2e2; color: #991b1b; }
+    .badge-out { background: #f1f5f9; color: #475569; }
+
+    .tab-pills .nav-link { font-size: 0.82rem; font-weight: 600; color: #64748b; border-radius: 8px; padding: 6px 14px; }
+    .tab-pills .nav-link.active { background: #4f46e5; color: white; }
+
+    .refresh-info { font-size: 0.72rem; color: #94a3b8; }
+    .section-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 14px; }
+
+    #refreshCountdown { font-variant-numeric: tabular-nums; }
+
+    .shipment-row td { font-size: 0.8rem; vertical-align: middle; }
+    .stock-table td, .stock-table th { font-size: 0.8rem; padding: 8px 12px; }
+    .stock-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; font-weight: 600; border-bottom: 2px solid #f1f5f9; }
+
+    .analyst-header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 20px; padding: 24px 28px; color: white; margin-bottom: 24px; position: relative; overflow: hidden; }
+    .analyst-header::after  { content: ''; position: absolute; right: -30px; top: -30px; width: 180px; height: 180px; background: rgba(99,102,241,0.15); border-radius: 50%; }
+    .analyst-header::before { content: ''; position: absolute; right: 60px; bottom: -50px; width: 120px; height: 120px; background: rgba(16,185,129,0.10); border-radius: 50%; }
+    .analyst-role-badge { background: linear-gradient(135deg, #4f46e5, #06b6d4); color: white; border-radius: 12px; padding: 4px 14px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+</style>
+
+<!-- ─── Header ─────────────────────────────────────────── -->
+<div class="analyst-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="analyst-role-badge"><i class="bi bi-graph-up-arrow me-1"></i>Analyst View</span>
+            </div>
+            <h2 class="mb-1 fw-bold" style="color:white;">Data Analyst Dashboard</h2>
+            <p class="mb-0" id="headerGreeting" style="color:#94a3b8;font-size:0.875rem;">
+                <i class="bi bi-activity me-1"></i>Real-time inventory intelligence &amp; analytics
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+            <button class="btn btn-sm btn-outline-light" onclick="openChangePassword()" style="border-radius:10px;font-size:0.82rem;">
+                <i class="bi bi-key me-1"></i>Change Password
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ─── KPI Cards ──────────────────────────────────────── -->
+<div class="row g-3 mb-4" id="kpiRow">
+    <!-- filled by JS -->
+    <div class="col-12 text-center py-4 text-muted" id="kpiLoading">
+        <div class="spinner-border spinner-border-sm me-2"></div> Loading KPIs…
+    </div>
+</div>
+
+
+
+
+
+<!-- ─── Revenue Charts Row ───────────────────────────── -->
+<div class="row g-3 mb-3">
+    <!-- 1. Revenue by Sites (Bar) -->
+    <div class="col-12 col-lg-8">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-building me-2" style="color:#6366f1;"></i>Revenue by Sites</h6>
+                <span class="refresh-info" id="revSiteLastUpdate"></span>
+            </div>
+            <div class="card-body"><div style="position:relative;min-height:220px;"><canvas id="revBySiteChart"></canvas></div></div>
+        </div>
+    </div>
+    <!-- 2. Revenue by Category (Donut) -->
+    <div class="col-12 col-lg-4">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-pie-chart-fill me-2" style="color:#f59e0b;"></i>Revenue by Category</h6>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="revByCatChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ─── Row 2: Stock Health Overview + Logistics Performance ── -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-5">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-boxes me-2" style="color:#f59e0b;"></i>Stock Health Overview</h6>
+                <span id="stockLastUpdate" class="refresh-info"></span>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center p-3">
+                <div style="width:300px;height:300px;flex-shrink:0;"><canvas id="stockDonutChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-truck me-2" style="color:#0ea5e9;"></i>Logistics Performance</h6>
+
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center p-3">
+                <div id="logisticsTransportView" style="width:100%;"><canvas id="logisticsTransportChart" height="170"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Top Products + Stockout ──────────────────────── -->
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-trophy-fill me-2" style="color:#f59e0b;"></i>Top Performing Products</h6>
+                <span class="refresh-info">by Revenue</span>
+            </div>
+            <div class="card-body"><canvas id="topProductsChart" height="220"></canvas></div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-exclamation-octagon-fill me-2" style="color:#ef4444;"></i>Stockout Items by Site</h6>
+                <span class="refresh-info" id="stockoutSiteCount"></span>
+            </div>
+            <div class="card-body"><canvas id="stockoutBySiteChart" height="200"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <!-- 3. Delivery Status Breakdown (Donut) -->
+    <div class="col-12 col-md-5">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-truck me-2" style="color:#0ea5e9;"></i>Delivery Status Breakdown</h6>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <div style="width:300px;height:300px;flex-shrink:0;"><canvas id="deliveryStatusChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <!-- 4. Transport Mode Mix (Bar) -->
+    <div class="col-12 col-md-7">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-diagram-3-fill me-2" style="color:#10b981;"></i>Transport Mode Mix</h6>
+            </div>
+            <div class="card-body"><canvas id="transportMixChart" height="240"></canvas></div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ═══ EXTENDED ANALYTICS — 8 visualizations ═══════════════ -->
+
+<!-- Row 1: Daily Sales Pattern (full-width) -->
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-calendar-week me-2" style="color:#6366f1;"></i>Daily Sales Pattern — Peak Sales Days</h6>
+                <span class="refresh-info">Avg revenue &amp; transaction count by day of week</span>
+            </div>
+            <div class="card-body">
+                <div style="display:flex;gap:16px;margin-bottom:10px;font-size:0.72rem;color:#94a3b8;">
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#6366f1;margin-right:4px;"></span>Avg Revenue (left axis)</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981;margin-right:4px;"></span>Transactions (right axis)</span>
+                </div>
+                <div style="position:relative;height:240px;"><canvas id="dailySalesChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Inventory Turnover + Stock vs Sales -->
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-5">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-arrow-repeat me-2" style="color:#10b981;"></i>Inventory Turnover Rate by Category</h6>
+            </div>
+            <div class="card-body">
+                <div style="display:flex;gap:12px;margin-bottom:10px;font-size:0.72rem;color:#94a3b8;flex-wrap:wrap;">
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981;margin-right:4px;"></span>Fast</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f59e0b;margin-right:4px;"></span>Medium</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#ef4444;margin-right:4px;"></span>Slow</span>
+                </div>
+                <div style="position:relative;height:220px;"><canvas id="invTurnoverChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-7">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-diagram-2 me-2" style="color:#0ea5e9;"></i>Stock Level vs Sales Volume</h6>
+            </div>
+            <div class="card-body">
+                <p style="font-size:0.72rem;color:#94a3b8;margin-bottom:8px;">Ending inventory vs revenue — spot overstock &amp; understock products</p>
+                <div style="position:relative;height:220px;"><canvas id="stockVsSalesChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Age Distribution + Gender × Income Spend -->
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-4">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-person-badge me-2" style="color:#6366f1;"></i>Customer Distribution by Age Group</h6>
+            </div>
+            <div class="card-body" style="padding-bottom:8px;">
+                <div style="position:relative;height:230px;"><canvas id="ageDistributionChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-8">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-gender-ambiguous me-2" style="color:#ec4899;"></i>Avg Spend by Gender &amp; Income Bracket</h6>
+            </div>
+            <div class="card-body">
+                <div id="genderSpendLegend" style="display:flex;gap:12px;margin-bottom:8px;font-size:0.72rem;color:#94a3b8;"></div>
+                <div style="position:relative;height:220px;"><canvas id="genderIncomeSpendChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 4: Age vs Spend Scatter (full-width) -->
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="card chart-card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6><i class="bi bi-dot me-2" style="color:#8b5cf6;"></i>Customer Age vs Average Spend</h6>
+                <span class="refresh-info">Each dot = 1 customer · Dashed line = trend</span>
+            </div>
+            <div class="card-body">
+                <div style="position:relative;height:300px;"><canvas id="ageSpendScatterChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 5: Delivery Time + Shipping Volume -->
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6><i class="bi bi-clock-history me-2" style="color:#0ea5e9;"></i>Avg Delivery Time by Site</h6>
+            </div>
+            <div class="card-body">
+                <div style="display:flex;gap:12px;margin-bottom:8px;font-size:0.72rem;color:#94a3b8;">
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981;margin-right:4px;"></span>Fast ≤2.5d</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f59e0b;margin-right:4px;"></span>Medium</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#ef4444;margin-right:4px;"></span>Slow &gt;4d</span>
+                </div>
+                <div style="position:relative;height:260px;"><canvas id="deliveryTimeChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+   
+</div>
+
+<!-- ─── Change Password Modal ─────────────────────────── -->
+<div class="modal fade" id="changePwModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header" style="background:linear-gradient(135deg,#312e81,#4338ca);color:white;">
+                <h5><i class="bi bi-key me-2"></i>Change Password</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Current Password</label><input type="password" id="pw-old" class="form-control" placeholder="••••••••"></div>
+                <div class="mb-3"><label class="form-label small fw-bold">New Password</label><input type="password" id="pw-new" class="form-control" placeholder="••••••••"></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Confirm New Password</label><input type="password" id="pw-confirm" class="form-control" placeholder="••••••••"></div>
+                <div id="pw-msg" class="small mt-1"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitChangePassword()">Update Password</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ── State ────────────────────────────────────────────────────
+let charts = {};
+let trendData = null;
+let currentTrendMetric = 'revenue';
+let logisticsData = null;
+let refreshTimer = 30;
+let refreshInterval = null;
+let countdownInterval = null;
+let _selectedStateId = 'ALL';   // tracks the active state filter
+let _allStates = [];            // populated from /api/states/
+
+// ── Colour helpers ───────────────────────────────────────────
+const PALETTE = ['#6366f1','#10b981','#f59e0b','#ef4444','#0ea5e9','#ec4899','#8b5cf6','#14b8a6','#f97316','#64748b'];
+const fmt$ = v => '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtN = v => Number(v).toLocaleString('en-US');
+const fmtPct = v => { const n = parseFloat(v); if (isNaN(n)) return '—'; return (n >= 0 ? '+' : '') + n.toFixed(1) + '%'; };
+const catColors = {'Healthy':'#10b981','Low':'#f59e0b','Critical':'#ef4444','Out of Stock':'#94a3b8'};
+
+// ── KPI Cards ────────────────────────────────────────────────
+let _analystStateName = '';
+
+const fmtCompact = v => {
+    const n = Number(v || 0);
+    if (n >= 1e7)  return '₹' + (n / 1e7).toFixed(1).replace(/\.0$/, '') + 'Cr';
+    if (n >= 1e5)  return '₹' + (n / 1e5).toFixed(1).replace(/\.0$/, '') + 'L';
+    if (n >= 1000) return '₹' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return '₹' + n.toFixed(0);
+};
+// keep alias
+const fmtLakhs = fmtCompact;
+
+// ── State param helper ────────────────────────────────────────
+function stateParam() {
+    return _selectedStateId && _selectedStateId !== 'ALL' ? `?state_id=${_selectedStateId}` : '';
+}
+
+// ── State filter change ───────────────────────────────────────
+function onStateFilterChange() {
+    const sel = document.getElementById('stateFilterSelect');
+    _selectedStateId = sel.value;
+    const isAll = _selectedStateId === 'ALL';
+    document.getElementById('stateComparisonPanel').style.display = isAll ? '' : 'none';
+    document.getElementById('kpiRow').closest ? null : null;
+    // Update header subtitle
+    const stateName = sel.options[sel.selectedIndex].text;
+    const greeting = document.getElementById('headerGreeting');
+    if (greeting) greeting.textContent = isAll ? 'All States — Real-time inventory intelligence & analytics' : `Viewing: ${stateName}`;
+    refreshAll(true);
+}
+
+// ── Load states into dropdown ─────────────────────────────────
+async function loadStatesDropdown() {
+    try {
+        const res = await axios.get('/api/states/');
+        _allStates = res.data.data || [];
+        const sel = document.getElementById('stateFilterSelect');
+        _allStates.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.state_id;
+            opt.textContent = s.state_name;
+            opt.style.color = '#1e1b4b';
+            sel.appendChild(opt);
+        });
+    } catch(e) { console.warn('Could not load states', e); }
+}
+
+// ── State Comparison Charts ───────────────────────────────────
+async function loadStateComparison() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/state-comparison');
+        if (!res.data.success) return;
+        const states = res.data.data.states || [];
+        document.getElementById('stateCompLastUpdate').textContent = new Date().toLocaleTimeString();
+
+        const labels = states.map(s => s.state_name);
+        const revenues = states.map(s => s.revenue_30d);
+        const units = states.map(s => s.units_30d);
+        const lowStock = states.map(s => s.low_stock);
+
+        // Revenue bar chart — always visible
+        if (charts.stateRevenue) charts.stateRevenue.destroy();
+        charts.stateRevenue = new Chart(document.getElementById('stateRevenueChart'), {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Revenue (₹)', data: revenues, backgroundColor: PALETTE.map(c => c + 'cc'), borderRadius: 8, borderSkipped: false }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+            }
+        });
+
+        // Units & Low Stock charts — only when stateComparisonPanel is visible (ALL access)
+        const panel = document.getElementById('stateComparisonPanel');
+        if (panel && panel.style.display !== 'none') {
+            // Units chart
+            if (charts.stateUnits) charts.stateUnits.destroy();
+            charts.stateUnits = new Chart(document.getElementById('stateUnitsChart'), {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Units Sold', data: units, backgroundColor: '#10b981cc', borderRadius: 6 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+            });
+
+            // Low stock chart
+            if (charts.stateLowStock) charts.stateLowStock.destroy();
+            charts.stateLowStock = new Chart(document.getElementById('stateLowStockChart'), {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Low Stock Items', data: lowStock, backgroundColor: lowStock.map(v => v > 10 ? '#ef4444cc' : v > 5 ? '#f59e0bcc' : '#10b981cc'), borderRadius: 6 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+            });
+        }
+
+    } catch(e) { console.error('State comparison error', e); }
+}
+
+function drillIntoState(stateId, stateName) {
+    const sel = document.getElementById('stateFilterSelect');
+    sel.value = stateId;
+    _selectedStateId = String(stateId);
+    document.getElementById('stateComparisonPanel').style.display = 'none';
+    const greeting = document.getElementById('headerGreeting');
+    if (greeting) greeting.textContent = `Viewing: ${stateName}`;
+    refreshAll(true);
+}
+
+async function loadKPIs() {
+    const row = document.getElementById('kpiRow');
+    const loading = document.getElementById('kpiLoading');
+    if (loading) { loading.style.display = ''; loading.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div> Loading KPIs…'; }
+    row.querySelectorAll('.kpi-col').forEach(e => e.remove());
+    try {
+        const res = await axios.get('/api/analytics/analyst/kpi-summary' + stateParam());
+        if (!res.data || !res.data.success) throw new Error('API returned failure');
+        const d = res.data.data || {};
+        const pct = parseFloat(d.revenue_change_pct);
+        const safePct = isNaN(pct) ? 0 : pct;
+        const isUp = safePct >= 0;
+        const cards = [
+            { label: 'Total Revenue',     val: fmtCompact(d.revenue_this_month ?? 0), icon: 'bi-cash-stack',  iconBg: '#6366f1' },
+            { label: 'Inventory Value',   val: fmtCompact(d.inventory_value    ?? 0), icon: 'bi-safe-fill',  iconBg: '#8b5cf6' },
+            { label: 'Total Products',    val: fmtN(d.total_products        ?? 0), icon: 'bi-tags',             iconBg: '#3b82f6' },
+            { label: 'Purchase Orders',   val: fmtN(d.total_purchase_orders ?? 0), icon: 'bi-cart-plus',        iconBg: '#0ea5e9' },
+            { label: 'Sales Orders',      val: fmtN(d.total_sales_orders    ?? 0), icon: 'bi-cart-check',       iconBg: '#10b981' },
+            { label: 'Out of Stock',      val: fmtN(d.out_of_stock_count    ?? 0), icon: 'bi-x-circle-fill',    iconBg: '#ef4444' },
+        ];
+        if (loading) loading.style.display = 'none';
+        cards.forEach(c => {
+            const col = document.createElement('div');
+            col.className = 'col-6 col-md-4 kpi-col';
+            col.innerHTML = `
+                <div class="kpi-card">
+                    <div class="kpi-icon" style="background:${c.iconBg}18;">
+                        <i class="bi ${c.icon}" style="color:${c.iconBg};"></i>
+                    </div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">${c.label}</div>
+                        <div class="kpi-val">${c.val}</div>
+                    </div>
+                </div>`;
+            row.appendChild(col);
+        });
+        const greeting = document.getElementById('headerGreeting');
+    } catch(e) {
+        console.error('KPI error', e);
+        if (loading) {
+            loading.style.display = '';
+            loading.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Could not load KPI cards. <a href="#" class="text-decoration-none fw-semibold" onclick="loadKPIs();return false;">Retry</a>';
+        }
+    }
+}
+
+// ── 12-Month Trend ───────────────────────────────────────────
+async function loadTrend() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/sales-trend-12m' + stateParam());
+        trendData = res.data.data;
+        renderTrend();
+    } catch(e) { console.error('Trend error', e); }
+}
+
+function renderTrend() {
+    if (!trendData) return;
+    const metric = currentTrendMetric;
+    const colors = { revenue: '#6366f1', units: '#10b981', returns: '#ef4444' };
+    const labels = { revenue: 'Revenue (₹)', units: 'Units Sold', returns: 'Returns' };
+    const datasets = [{
+        label: labels[metric],
+        data: trendData[metric],
+        borderColor: colors[metric],
+        backgroundColor: colors[metric] + '18',
+        fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6,
+        borderWidth: 2.5,
+    }];
+    if (metric === 'revenue') {
+        datasets.push({
+            label: 'Returns (₹)',
+            data: trendData.returns.map(v => v * 5),
+            borderColor: '#ef444440', borderDash: [4,4],
+            backgroundColor: 'transparent', tension: 0.4, pointRadius: 2, borderWidth: 1.5,
+        });
+    }
+    if (charts.trend) charts.trend.destroy();
+    charts.trend = new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: { labels: trendData.labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: v => metric === 'revenue' ? '₹' + (v/1000).toFixed(0) + 'k' : fmtN(v) } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+function switchTrend(metric, btn) {
+    currentTrendMetric = metric;
+    document.querySelectorAll('.tab-btn').forEach(b => { b.style.background = 'transparent'; b.style.color = '#94a3b8'; });
+    btn.style.background = '#4f46e5';  btn.style.color = 'white';
+    renderTrend();
+}
+
+// ── Stock Health ─────────────────────────────────────────────
+async function loadStockHealth() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/stock-health' + stateParam());
+        const { summary, items } = res.data.data;
+        document.getElementById('stockLastUpdate').textContent = new Date().toLocaleTimeString();
+
+        // Donut — show all 4 segments even if some are 0
+        const stockColors = ['#10b981', '#f59e0b', '#ef4444', '#7c3aed'];
+        const stockData   = [summary.healthy, summary.low, summary.critical, summary.out_of_stock];
+        const stockLabels = ['Healthy', 'Low', 'Critical', 'Out of Stock'];
+
+        if (charts.stockDonut) charts.stockDonut.destroy();
+        charts.stockDonut = new Chart(document.getElementById('stockDonutChart'), {
+            type: 'doughnut',
+            data: {
+                labels: stockLabels,
+                datasets: [{
+                    data: stockData,
+                    backgroundColor: stockColors,
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 12, font: { size: 11 },
+                            generateLabels(chart) {
+                                return chart.data.labels.map((lbl, i) => ({
+                                    text: `${lbl}: ${stockData[i]}`,
+                                    fillStyle: stockColors[i],
+                                    strokeStyle: stockColors[i],
+                                    fontColor: i === 3 && stockData[3] > 0 ? '#7c3aed' : undefined,
+                                    hidden: false, index: i
+                                }));
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => {
+                                const total = stockData.reduce((a,b) => a+b, 0);
+                                return ` ${ctx.label}: ${ctx.raw} (${total > 0 ? (ctx.raw/total*100).toFixed(1) : 0}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: '68%'
+            }
+        });
+
+    } catch(e) { console.error('Stock error', e); }
+}
+
+// ── Logistics ────────────────────────────────────────────────
+async function loadLogistics() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/logistics-performance' + stateParam());
+        logisticsData = res.data.data;
+        if (charts.logTransport) charts.logTransport.destroy();
+        charts.logTransport = new Chart(document.getElementById('logisticsTransportChart'), {
+            type: 'bar',
+            data: {
+                labels: logisticsData.transport_types.map(d => d.type),
+                datasets: [{ label: 'Shipments', data: logisticsData.transport_types.map(d => d.count),
+                    backgroundColor: PALETTE, borderRadius: 8 }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } }
+        });
+
+    } catch(e) { console.error('Logistics error', e); }
+}
+
+
+// ── Password Modal ───────────────────────────────────────────
+function openChangePassword() {
+    ['pw-old','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('pw-msg').textContent = '';
+    new bootstrap.Modal(document.getElementById('changePwModal')).show();
+}
+async function submitChangePassword() {
+    const old = document.getElementById('pw-old').value;
+    const nw  = document.getElementById('pw-new').value;
+    const cf  = document.getElementById('pw-confirm').value;
+    const msg = document.getElementById('pw-msg');
+    if (!old || !nw || !cf) { msg.className='text-danger'; msg.textContent='All fields required.'; return; }
+    if (nw !== cf) { msg.className='text-danger'; msg.textContent='Passwords do not match.'; return; }
+    try {
+        const res = await axios.post('/api/auth/change-password', { old_password: old, new_password: nw });
+        msg.className = 'text-success'; msg.textContent = res.data.message;
+        setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('changePwModal')).hide(), 1500);
+    } catch(err) { msg.className='text-danger'; msg.textContent = err.response?.data?.message || 'Error.'; }
+}
+
+// ── Auto-refresh ─────────────────────────────────────────────
+function startCountdown() {
+    refreshTimer = 30;
+    clearInterval(countdownInterval);
+    countdownInterval = setInterval(() => {
+        refreshTimer--;
+        const el = document.getElementById('refreshCountdown');
+        if (el) el.textContent = refreshTimer;
+        if (refreshTimer <= 0) { clearInterval(countdownInterval); }
+    }, 1000);
+}
+
+
+// ── Revenue by Sites (Bar Chart) ─────────────────────────────
+async function loadRevBySite() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/revenue-by-warehouse' + stateParam());
+        const data = res.data.data || [];
+        const labels = data.map(d => d.warehouse);
+        const values = data.map(d => d.revenue);
+        const el = document.getElementById('revSiteLastUpdate');
+        if (el) el.textContent = labels.length + ' sites';
+        if (charts.revBySite) charts.revBySite.destroy();
+        const ctx = document.getElementById('revBySiteChart');
+        if (!ctx) return;
+        const barColors = labels.map((_, i) => ['#6366f1','#10b981','#f59e0b','#0ea5e9','#ec4899','#8b5cf6','#ef4444','#14b8a6','#f97316','#84cc16'][i % 10]);
+        charts.revBySite = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Revenue (₹)',
+                    data: values,
+                    backgroundColor: barColors.map(c => c + 'cc'),
+                    borderColor: barColors,
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ' ' + fmtCompact(ctx.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { font: { size: 10 }, maxRotation: 40 }, grid: { display: false } },
+                    y: {
+                        ticks: { font: { size: 10 }, callback: v => fmtCompact(v) },
+                        grid: { color: '#f1f5f9' }
+                    }
+                }
+            }
+        });
+    } catch(e) { console.error('revBySite error', e); }
+    }
+
+// ── Monthly Revenue Trend (Line Chart) ────────────────────────
+async function loadMonthlyRev() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/sales-trend-12m' + stateParam());
+        const d = res.data.data || {};
+        if (charts.monthlyRev) charts.monthlyRev.destroy();
+        const ctx = document.getElementById('monthlyRevChart');
+        if (!ctx) return;
+        const ctxObj = ctx.getContext('2d');
+        const grad = ctxObj.createLinearGradient(0, 0, 0, 220);
+        grad.addColorStop(0, 'rgba(16,185,129,0.3)');
+        grad.addColorStop(1, 'rgba(16,185,129,0.0)');
+        charts.monthlyRev = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: d.labels || [],
+                datasets: [{
+                    label: 'Revenue',
+                    data: d.revenue || [],
+                    borderColor: '#10b981',
+                    backgroundColor: grad,
+                    borderWidth: 2.5,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#10b981',
+                    fill: true,
+                    tension: 0.4,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ' ' + fmtCompact(ctx.parsed.y) } }
+                },
+                scales: {
+                    x: { ticks: { font: { size: 9 }, maxRotation: 45 }, grid: { display: false } },
+                    y: {
+                        ticks: { font: { size: 10 }, callback: v => fmtCompact(v) },
+                        grid: { color: '#f1f5f9' }
+                    }
+                }
+            }
+        });
+    } catch(e) { console.error('monthlyRev error', e); }
+}
+
+// ── Revenue by Category (Donut) ───────────────────────────────
+async function loadRevByCategory() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/revenue-by-category' + stateParam());
+        const data = res.data.data || [];
+        const labels = data.map(d => d.category);
+        const values = data.map(d => d.revenue);
+        const donutColors = ['#6366f1','#10b981','#f59e0b','#0ea5e9','#ec4899','#8b5cf6','#ef4444','#14b8a6','#f97316','#64748b'];
+        if (charts.revByCat) charts.revByCat.destroy();
+        const ctx = document.getElementById('revByCatChart');
+        if (!ctx) return;
+        charts.revByCat = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: donutColors.slice(0, labels.length),
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                    hoverOffset: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '62%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { size: 10 }, padding: 8, boxWidth: 10 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ' ' + ctx.label + ': ' + fmtCompact(ctx.parsed)
+                        }
+                    }
+                }
+            }
+        });
+    } catch(e) { console.error('revByCat error', e); }
+}
+
+
+// ── Stockout Items by Site (Bar) ──────────────────────────────
+async function loadStockoutBySite() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/stockout-by-site' + stateParam());
+        const data = res.data.data || [];
+        const el = document.getElementById('stockoutSiteCount');
+        if (el) el.textContent = data.length + ' sites';
+        if (charts.stockoutBySite) charts.stockoutBySite.destroy();
+        const ctx = document.getElementById('stockoutBySiteChart');
+        if (!ctx) return;
+        if (!data.length) {
+            ctx.parentElement.innerHTML = '<div class="text-center text-success py-4"><i class="bi bi-check-circle-fill fs-2"></i><p class="mt-2 fw-semibold">No stockouts across all sites!</p></div>';
+            return;
+        }
+        const labels = data.map(d => d.site);
+        const values = data.map(d => d.stockouts);
+        const maxV = Math.max(...values);
+        const colors = values.map(v => {
+            const ratio = v / maxV;
+            if (ratio > 0.66) return '#ef4444';
+            if (ratio > 0.33) return '#f59e0b';
+            return '#10b981';
+        });
+        charts.stockoutBySite = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Stockouts',
+                    data: values,
+                    backgroundColor: colors.map(c => c + 'cc'),
+                    borderColor: colors,
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + ' stockout items' } }
+                },
+                scales: {
+                    x: { ticks: { font: { size: 10 }, maxRotation: 35 }, grid: { display: false } },
+                    y: { ticks: { font: { size: 10 }, stepSize: 1 }, grid: { color: '#f1f5f9' }, beginAtZero: true }
+                }
+            }
+        });
+    } catch(e) { console.error('stockoutBySite error', e); }
+}
+
+
+// ── Delivery Status Breakdown (Donut) ────────────────────────
+async function loadDeliveryStatus() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/logistics-performance' + stateParam());
+        const statusData = res.data.data.status_breakdown || [];
+        if (charts.deliveryStatus) charts.deliveryStatus.destroy();
+        const ctx = document.getElementById('deliveryStatusChart');
+        if (!ctx) return;
+        const statusColors = {
+            'Delivered': '#10b981', 'In Transit': '#6366f1', 'Pending': '#f59e0b',
+            'Shipped': '#0ea5e9', 'Cancelled': '#ef4444', 'Returned': '#ec4899',
+            'Processing': '#8b5cf6', 'Delayed': '#f97316',
+        };
+        const labels = statusData.map(d => d.status);
+        const values = statusData.map(d => d.count);
+        const colors = labels.map(l => statusColors[l] || '#94a3b8');
+        charts.deliveryStatus = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors.map(c => c + 'dd'),
+                    borderColor: colors,
+                    borderWidth: 2,
+                    hoverOffset: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 8, boxWidth: 10 } },
+                    tooltip: { callbacks: {
+                        label: ctx => ' ' + ctx.label + ': ' + ctx.parsed.toLocaleString() + ' shipments'
+                    }}
+                }
+            }
+        });
+    } catch(e) { console.error('deliveryStatus error', e); }
+}
+
+// ── Transport Mode Mix (Bar) ─────────────────────────────────
+async function loadTransportMix() {
+    try {
+        const res = await axios.get('/api/analytics/analyst/logistics-performance' + stateParam());
+        const transportData = res.data.data.transport_types || [];
+        if (charts.transportMix) charts.transportMix.destroy();
+        const ctx = document.getElementById('transportMixChart');
+        if (!ctx) return;
+        const modeColors = {
+            'Road': '#6366f1', 'Rail': '#10b981', 'Air': '#0ea5e9',
+            'Sea': '#f59e0b', 'Courier': '#ec4899', 'Local': '#8b5cf6',
+        };
+        const labels = transportData.map(d => d.type);
+        const values = transportData.map(d => d.count);
+        const total = values.reduce((a, b) => a + b, 0);
+        const colors = labels.map(l => modeColors[l] || '#94a3b8');
+        charts.transportMix = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Shipments',
+                    data: values,
+                    backgroundColor: colors.map(c => c + 'cc'),
+                    borderColor: colors,
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: {
+                        label: ctx => {
+                            const pct = total > 0 ? ((ctx.parsed.x / total) * 100).toFixed(1) : 0;
+                            return ' ' + ctx.parsed.x.toLocaleString() + ' shipments (' + pct + '%)';
+                        }
+                    }}
+                },
+                scales: {
+                    x: { ticks: { font: { size: 10 } }, grid: { color: '#f1f5f9' }, beginAtZero: true },
+                    y: { ticks: { font: { size: 11, weight: '600' } }, grid: { display: false } }
+                }
+            }
+        });
+    } catch(e) { console.error('transportMix error', e); }
+}
+
+async function refreshAll(manual = false) {
+    clearInterval(refreshInterval);
+    startCountdown();
+    const isAll = _selectedStateId === 'ALL';
+    const tasks = [loadKPIs(), loadStockHealth(), loadLogistics(), loadRevBySite(), loadRevByCategory(), loadStockoutBySite(), loadDeliveryStatus(), loadTransportMix(), loadTopProducts(), loadStateComparison()];
+    await Promise.allSettled(tasks);
+    if (manual) await Promise.allSettled([loadTrend()]);
+    refreshInterval = setInterval(() => refreshAll(), 30000);
+}
+
+// ── Top Performing Products ───────────────────────────────────
+async function loadTopProducts() {
+    try {
+        const res = await axios.get('/api/analytics/top-products');
+        const data = res.data.data || [];
+        if (charts.topProducts) charts.topProducts.destroy();
+        const ctx = document.getElementById('topProductsChart');
+        if (!ctx) return;
+        const labels = data.map(p => p.name.length > 22 ? p.name.substring(0, 22) + '…' : p.name);
+        const values = data.map(p => p.revenue);
+        const colors = ['#6366f1','#10b981','#f59e0b','#0ea5e9','#ec4899','#8b5cf6','#ef4444','#14b8a6','#f97316','#64748b'];
+        charts.topProducts = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Revenue (₹)',
+                    data: values,
+                    backgroundColor: colors.map(c => c + 'cc'),
+                    borderColor: colors,
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ' ' + fmtCompact(ctx.parsed.x) } }
+                },
+                scales: {
+                    x: { ticks: { callback: v => fmtCompact(v), font: { size: 10 } }, grid: { color: '#f1f5f9' }, beginAtZero: true },
+                    y: { ticks: { font: { size: 10, weight: '600' } }, grid: { display: false } }
+                }
+            }
+        });
+    } catch(e) { console.error('topProducts error', e); }
+}
+
+
+// ── Boot ─────────────────────────────────────────────────────
+async function loadPageData() {
+    // Check analyst access
+    const role = localStorage.getItem('user_role');
+    if (role && role !== 'Analyst' && role !== 'Admin') {
+        window.location.href = role === 'Manager' ? '/manager-dashboard' : '/login';
+        return;
+    }
+
+    // Load states dropdown first
+    await loadStatesDropdown();
+
+    // Fetch current user to determine default state scope
+    try {
+        const me = await axios.get('/api/auth/me');
+        if (me.data && me.data.success) {
+            const u = me.data.data;
+            const username = u.username || '';
+            const stateId = u.state_id;
+            const sel = document.getElementById('stateFilterSelect');
+            if (stateId && stateId !== 'ALL') {
+                // Pre-select the analyst's assigned state
+                _selectedStateId = String(stateId);
+                sel.value = String(stateId);
+                const stateName = sel.options[sel.selectedIndex]?.text || `State ${stateId}`;
+                _analystStateName = stateName;
+                document.getElementById('stateComparisonPanel').style.display = 'none';
+                const greeting = document.getElementById('headerGreeting');
+                if (greeting) greeting.textContent = `Welcome, ${username} · ${stateName}`;
+            } else {
+                // ALL access — show comparison panel
+                _selectedStateId = 'ALL';
+                sel.value = 'ALL';
+                _analystStateName = 'All States';
+                document.getElementById('stateComparisonPanel').style.display = '';
+                const greeting = document.getElementById('headerGreeting');
+                if (greeting) greeting.textContent = `Welcome, ${username} · All States`;
+            }
+        }
+    } catch(e) { console.warn('Could not load user info', e); }
+
+    const isAll = _selectedStateId === 'ALL';
+    const bootTasks = [loadKPIs(), loadTrend(), loadStockHealth(), loadLogistics(), loadRevBySite(), loadRevByCategory(), loadStockoutBySite(), loadDeliveryStatus(), loadTransportMix(), loadTopProducts(), loadStateComparison()];
+    await Promise.allSettled(bootTasks);
+    startCountdown();
+    refreshInterval = setInterval(() => refreshAll(), 30000);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  NEW CHART FUNCTIONS — 12 Missing Visualizations
+// ══════════════════════════════════════════════════════════════
+
+const NP = ['#6366f1','#10b981','#f59e0b','#0ea5e9','#ec4899','#8b5cf6','#ef4444','#14b8a6','#f97316','#64748b'];
+const NSC = { grid:{color:'#f1f5f9'}, border:{display:false} };
+const _mAR = false;
+
+// 1. Daily Sales Pattern
+async function loadDailySalesPattern() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/daily-sales-pattern' + stateParam());
+    const d = res.data.data;
+    if (!d) return;
+    if (charts.dailySales) charts.dailySales.destroy();
+    charts.dailySales = new Chart(document.getElementById('dailySalesChart'), {
+      type: 'line',
+      data: { labels: d.labels, datasets: [
+        { label: 'Avg Revenue', data: d.avg_revenue, borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.08)', fill: true, tension: 0.4,
+          pointBackgroundColor: '#6366f1', pointRadius: 5, borderWidth: 2.5, yAxisID: 'y' },
+        { label: 'Transactions', data: d.txn_count, borderColor: '#10b981',
+          borderDash: [5,4], tension: 0.4, pointStyle: 'rectRot',
+          pointBackgroundColor: '#10b981', pointRadius: 5, borderWidth: 2, yAxisID: 'y1' }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { ...NSC, position: 'left', ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'k', font: { size: 10 } } },
+          y1: { ...NSC, position: 'right', grid: { drawOnChartArea: false },
+                ticks: { color: '#10b981', font: { size: 10 } } }
+        },
+        tooltip: { mode: 'index', intersect: false }
+      }
+    });
+  } catch(e) { console.error('dailySalesPattern', e); }
+}
+
+// 3. Inventory Turnover
+async function loadInventoryTurnover() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/inventory-turnover' + stateParam());
+    const d = res.data.data;
+    if (!d) return;
+    const max = Math.max(...d.rates);
+    const cols = d.rates.map(r => r >= max * 0.8 ? '#10b981' : r >= max * 0.5 ? '#f59e0b' : '#ef4444');
+    if (charts.invTurnover) charts.invTurnover.destroy();
+    charts.invTurnover = new Chart(document.getElementById('invTurnoverChart'), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{ data: d.rates, backgroundColor: cols, borderRadius: 7 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => 'Turnover: ' + ctx.raw.toFixed(3) + 'x' } } },
+        scales: { x: { grid: { display: false } },
+          y: { ...NSC, ticks: { callback: v => v.toFixed(2) + 'x', font: { size: 10 } } } }
+      }
+    });
+  } catch(e) { console.error('invTurnover', e); }
+}
+
+// 4. Stock vs Sales Scatter
+async function loadStockVsSales() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/stock-vs-sales' + stateParam());
+    const pts = res.data.data.points || [];
+    const scatterData = pts.map(p => ({ x: p.stock, y: p.revenue }));
+    if (charts.stockVsSales) charts.stockVsSales.destroy();
+    charts.stockVsSales = new Chart(document.getElementById('stockVsSalesChart'), {
+      type: 'scatter',
+      data: { datasets: [{ label: 'Product', data: scatterData,
+        backgroundColor: 'rgba(14,165,233,0.5)', pointRadius: 6, pointHoverRadius: 9 }] },
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: 12 },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => 'Stock: ' + ctx.raw.x.toFixed(0) + ' | Rev: ₹' + ctx.raw.y.toLocaleString() } } },
+        scales: {
+          x: { ...NSC, title: { display: true, text: 'Ending inventory (units)', font: { size: 10 } },
+               ticks: { font: { size: 10 } } },
+          y: { ...NSC, title: { display: true, text: 'Revenue (₹)', font: { size: 10 } },
+               ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'k', font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) { console.error('stockVsSales', e); }
+}
+
+
+// 7. Age Distribution
+async function loadAgeDistribution() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/customer-age-distribution' + stateParam());
+    const d = res.data.data;
+    if (!d) return;
+    const cols = ['rgba(99,102,241,0.4)','rgba(99,102,241,0.55)','rgba(99,102,241,0.75)','rgba(99,102,241,0.9)','#f59e0b'];
+    if (charts.ageDist) charts.ageDist.destroy();
+    charts.ageDist = new Chart(document.getElementById('ageDistributionChart'), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{ data: d.counts, backgroundColor: cols, borderRadius: 7 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw + ' customers' } } },
+        scales: { x: { grid: { display: false } }, y: { ...NSC, ticks: { font: { size: 10 } } } }
+      }
+    });
+  } catch(e) { console.error('ageDist', e); }
+}
+
+// 8. Gender × Income Spend (Stacked)
+async function loadGenderIncomeSpend() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/gender-income-spend' + stateParam());
+    const d = res.data.data;
+    if (!d) return;
+    const gCols = { Female: '#6366f1', Male: '#10b981', Other: '#f59e0b', Unknown: '#94a3b8' };
+    const datasets = d.genders.map(g => ({
+      label: g, data: d.series[g],
+      backgroundColor: gCols[g] || '#94a3b8',
+      borderRadius: 4, stack: 'spend'
+    }));
+    // Build legend
+    const leg = document.getElementById('genderSpendLegend');
+    if (leg) {
+      leg.innerHTML = d.genders.map(g =>
+        `<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${gCols[g]||'#94a3b8'};margin-right:4px;"></span>${g}</span>`
+      ).join('');
+    }
+    if (charts.genderIncomeSpend) charts.genderIncomeSpend.destroy();
+    charts.genderIncomeSpend = new Chart(document.getElementById('genderIncomeSpendChart'), {
+      type: 'bar',
+      data: { labels: d.income_labels, datasets },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { ...NSC, stacked: true, ticks: { callback: v => '₹' + (v/1000).toFixed(1) + 'k', font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) { console.error('genderIncomeSpend', e); }
+}
+
+// 9. Age vs Avg Spend Scatter
+async function loadAgeSpendScatter() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/age-vs-spend' + stateParam());
+    const pts = res.data.data.points || [];
+    const scatterData = pts.map(p => ({ x: p.x, y: p.y }));
+    // Calculate trend line
+    const n = scatterData.length;
+    if (n < 2) return;
+    const mx = scatterData.reduce((a,p)=>a+p.x,0)/n;
+    const my = scatterData.reduce((a,p)=>a+p.y,0)/n;
+    const slope = scatterData.reduce((a,p)=>a+(p.x-mx)*(p.y-my),0) /
+                  scatterData.reduce((a,p)=>a+(p.x-mx)**2,0);
+    const intercept = my - slope*mx;
+    const xMin = Math.min(...scatterData.map(p=>p.x));
+    const xMax = Math.max(...scatterData.map(p=>p.x));
+    const trendLine = [{ x: xMin, y: Math.round(intercept + slope * xMin) },
+                       { x: xMax, y: Math.round(intercept + slope * xMax) }];
+    if (charts.ageSpendScatter) charts.ageSpendScatter.destroy();
+    charts.ageSpendScatter = new Chart(document.getElementById('ageSpendScatterChart'), {
+      type: 'scatter',
+      data: { datasets: [
+        { label: 'Customer', data: scatterData, backgroundColor: 'rgba(139,92,246,0.55)',
+          pointRadius: 6, pointHoverRadius: 9 },
+        { label: 'Trend', data: trendLine, type: 'line', borderColor: '#8b5cf6',
+          borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, showLine: true }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: 14 },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ?
+            'Age ' + ctx.raw.x + ' | ₹' + ctx.raw.y.toLocaleString() : 'Trend' } } },
+        scales: {
+          x: { ...NSC, title: { display: true, text: 'Customer Age (years)', font: { size: 11 } }, ticks: { font: { size: 10 } } },
+          y: { ...NSC, title: { display: true, text: 'Average Spend (₹)', font: { size: 11 } },
+               ticks: { callback: v => '₹' + (v/1000).toFixed(1) + 'k', font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) { console.error('ageSpendScatter', e); }
+}
+
+// 11. Delivery Time by Site
+async function loadDeliveryTimeNew() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/delivery-time-by-site' + stateParam());
+    const d = res.data.data;
+    if (!d || !d.labels.length) return;
+    const cols = d.avg_days.map(v => v <= 2.5 ? '#10b981' : v <= 4 ? '#f59e0b' : '#ef4444');
+    if (charts.deliveryTimeNew) charts.deliveryTimeNew.destroy();
+    charts.deliveryTimeNew = new Chart(document.getElementById('deliveryTimeChart'), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{ data: d.avg_days,
+        backgroundColor: cols, borderRadius: 5 }] },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.raw + ' days avg' } } },
+        scales: {
+          x: { ...NSC, min: 0, title: { display: true, text: 'Avg days to delivery', font: { size: 10 } },
+               ticks: { font: { size: 10 } } },
+          y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
+        }
+      }
+    });
+  } catch(e) { console.error('deliveryTimeNew', e); }
+}
+
+// 12. Shipping Volume Trend
+async function loadShippingVolumeTrend() {
+  try {
+    const res = await axios.get('/api/analytics/analyst/shipping-volume-trend' + stateParam());
+    const d = res.data.data;
+    if (!d || !d.labels.length) return;
+    if (charts.shippingVolTrend) charts.shippingVolTrend.destroy();
+    charts.shippingVolTrend = new Chart(document.getElementById('shippingVolTrendChart'), {
+      type: 'line',
+      data: { labels: d.labels, datasets: [
+        { label: 'Units Shipped', data: d.quantities, borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.08)', fill: true, tension: 0.4,
+          pointBackgroundColor: '#6366f1', pointRadius: 5, borderWidth: 2.5 }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw.toLocaleString() + ' units' } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, autoSkip: false, maxRotation: 35 } },
+          y: { ...NSC, min: 0, ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) { console.error('shippingVolTrend', e); }
+}
+
+// ── Hook into existing refreshAll ────────────────────────────────
+const _origRefreshAll = refreshAll;
+refreshAll = async function(manual = false) {
+  await _origRefreshAll(manual);
+  Promise.allSettled([
+    loadDailySalesPattern(),
+    loadInventoryTurnover(), loadStockVsSales(),
+    loadAgeDistribution(), loadGenderIncomeSpend(), loadAgeSpendScatter(),
+    loadDeliveryTimeNew(), loadShippingVolumeTrend()
+  ]);
+};
+
+// Load new charts on boot too
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    Promise.allSettled([
+      loadDailySalesPattern(),
+      loadInventoryTurnover(), loadStockVsSales(),
+      loadAgeDistribution(), loadGenderIncomeSpend(), loadAgeSpendScatter(),
+      loadDeliveryTimeNew(), loadShippingVolumeTrend()
+    ]);
+  }, 1200);
+});
+
+</script>
+{% endblock %}

@@ -1,0 +1,570 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 24px 28px; color: white;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .page-header::after {
+        content: ''; position: absolute; right: -30px; top: -30px;
+        width: 180px; height: 180px; background: rgba(79,70,229,0.15);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header::before {
+        content: ''; position: absolute; right: 60px; bottom: -50px;
+        width: 120px; height: 120px; background: rgba(99,102,241,0.12);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header h2 { color: white !important; font-weight: 800; margin-bottom: 4px; }
+    .page-header h2 i { opacity: 0.85; }
+    .page-header small, .page-header p.sub { color: #94a3b8 !important; font-size: 0.875rem; margin: 0; }
+    .page-header .header-action { 
+        background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 10px 20px; color: white; font-weight: 600;
+        font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+        position: relative; z-index: 10;
+    }
+    .page-header .header-action:hover {
+        background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5);
+        transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        color: white; text-decoration: none;
+    }
+</style>
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-person-badge-fill me-2"></i>User Management</h2>
+            <p class="sub mb-0">Manage system accounts, roles and permissions</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="header-action" onclick="openManagerModal()" style="background:rgba(59,130,246,0.18);border-color:rgba(99,179,237,0.5);">
+                <i class="bi bi-person-gear"></i> Create Manager
+            </button>
+            <button class="header-action" onclick="openAnalystModal()" style="background:rgba(16,185,129,0.18);border-color:rgba(52,211,153,0.5);">
+                <i class="bi bi-graph-up-arrow"></i> Create Analyst
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card p-3 mb-4 shadow-sm border-0">
+    <div class="row g-2">
+        <div class="col-md-10">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="u-search" class="form-control border-start-0"
+                    placeholder="Search email or username..."
+                    onkeyup="if(event.key==='Enter') loadData(1)">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-dark w-100" onclick="loadData(1)">Search</button>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card shadow-sm border-0">
+   <div class="advanced-table-container">
+    <table class="advanced-table advanced-table-striped">
+            <thead class="table-light">
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>State</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="u-table"></tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-center">
+        <ul class="pagination pagination-sm mb-0" id="u-pagination"></ul>
+    </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div class="modal fade" id="uModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white" id="modalHeader" style="background:linear-gradient(135deg,#3b82f6,#6366f1);">
+                <h5 id="modalTitle">User Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="u-form">
+                    <input type="hidden" id="m-id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Username</label>
+                            <input id="m-uname" class="form-control" placeholder="Enter username" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold">Email</label>
+                            <input type="email" id="m-email" class="form-control" placeholder="Enter email" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label small fw-bold">Role</label>
+                            <input type="hidden" id="m-role" value="">
+                            <div id="m-role-badge" class="form-control bg-light fw-bold" style="cursor:default;"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="state-field">
+                        <label class="form-label small fw-bold" id="state-label">State</label>
+                        <select id="m-state" class="form-select">
+                            <option value="">-- Select State --</option>
+                        </select>
+                        <div id="analyst-state-info" class="form-control bg-light text-muted d-none" style="cursor:default;">
+                            <i class="bi bi-globe2 me-2 text-success"></i><strong>All States</strong> — Analyst has access to data across all states
+                        </div>
+                    </div>
+                    <div class="mb-3" id="photo-field">
+                        <label class="form-label small fw-bold">Profile Photo <span class="text-muted fw-normal">(optional)</span></label>
+                        <div class="d-flex align-items-center gap-3">
+                            <img id="photo-preview" src="" alt="" class="rounded-circle d-none" style="width:64px;height:64px;object-fit:cover;border:2px solid #e2e8f0;">
+                            <div class="flex-grow-1">
+                                <input type="file" id="m-photo" class="form-control form-control-sm" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" onchange="previewPhoto(this)">
+                                <div class="form-text">Recommended: square image, max 2MB. PNG, JPG, WEBP accepted.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="status-field">
+                        <label class="form-label small fw-bold">Status</label>
+                        <select id="m-status" class="form-select">
+                            <option value="active">Active</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                    </div>
+                    <button type="submit" id="btn-save" class="btn btn-primary w-100">
+                        <i class="bi bi-save me-1"></i> Save User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View User Modal -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5><i class="bi bi-eye me-2"></i>User Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Photo header -->
+                <div id="v-photo-header" class="text-center py-4 bg-light border-bottom d-none">
+                    <img id="v-photo" src="" alt="Profile" class="rounded-circle"
+                         style="width:88px;height:88px;object-fit:cover;border:3px solid #e2e8f0;">
+                    <div class="mt-2 fw-bold" id="v-photo-name"></div>
+                </div>
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr class="border-bottom"><th class="text-muted ps-3" style="width:40%">Username</th><td id="v-uname" class="fw-bold"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Email</th><td id="v-email"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Role</th><td id="v-role"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">State</th><td id="v-state"></td></tr>
+                        <tr class="border-bottom"><th class="text-muted ps-3">Manager</th><td id="v-manager"></td></tr>
+                        <tr><th class="text-muted ps-3">Status</th><td id="v-status"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-danger text-white">
+                <h5><i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="mb-1">Are you sure you want to delete</p>
+                <strong id="delete-username"></strong>?
+                <p class="text-muted small mt-2 mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger" id="btn-confirm-delete">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let editMode = false;
+let deleteUserId = null;
+let statesList = [];
+
+function loadPageData() { loadStates(); loadData(1); }
+
+// Load states into dropdown
+async function loadStates() {
+    try {
+        const res = await axios.get('/api/states');
+        statesList = res.data.data || [];
+        const sel = document.getElementById('m-state');
+        sel.innerHTML = '<option value="">-- Select State --</option>';
+        statesList.forEach(s => {
+            sel.innerHTML += `<option value="${s.state_id}">${s.state_name}</option>`;
+        });
+    } catch (e) {
+        console.error('Failed to load states', e);
+    }
+}
+
+// Configure modal for Manager creation
+function openManagerModal() {
+    editMode = false;
+    document.getElementById('u-form').reset();
+    document.getElementById('m-id').value = '';
+    document.getElementById('m-role').value = 'Manager';
+    document.getElementById('m-role-badge').innerHTML = '<i class="bi bi-person-gear me-2 text-primary"></i>Manager';
+    document.getElementById('modalTitle').innerText = 'Create Manager';
+    document.getElementById('modalHeader').style.background = 'linear-gradient(135deg,#3b82f6,#6366f1)';
+    document.getElementById('photo-preview').classList.add('d-none');
+    document.getElementById('photo-preview').src = '';
+    document.getElementById('photo-field').style.display = 'block';
+    document.getElementById('status-field').style.display = 'none';
+    // Show state dropdown for manager
+    document.getElementById('state-field').style.display = 'block';
+    document.getElementById('m-state').classList.remove('d-none');
+    document.getElementById('analyst-state-info').classList.add('d-none');
+    document.getElementById('m-state').required = true;
+    new bootstrap.Modal(document.getElementById('uModal')).show();
+}
+
+// Configure modal for Analyst creation
+function openAnalystModal() {
+    editMode = false;
+    document.getElementById('u-form').reset();
+    document.getElementById('m-id').value = '';
+    document.getElementById('m-role').value = 'Analyst';
+    document.getElementById('m-role-badge').innerHTML = '<i class="bi bi-graph-up-arrow me-2 text-success"></i>Analyst';
+    document.getElementById('modalTitle').innerText = 'Create Analyst';
+    document.getElementById('modalHeader').style.background = 'linear-gradient(135deg,#10b981,#059669)';
+    document.getElementById('photo-preview').classList.add('d-none');
+    document.getElementById('photo-preview').src = '';
+    document.getElementById('photo-field').style.display = 'block';
+    document.getElementById('status-field').style.display = 'none';
+    // Show state dropdown for Analyst (with ALL option)
+    document.getElementById('state-field').style.display = 'block';
+    document.getElementById('m-state').classList.remove('d-none');
+    document.getElementById('analyst-state-info').classList.add('d-none');
+    // Ensure ALL option exists
+    const sel = document.getElementById('m-state');
+    if (!sel.querySelector('option[value="ALL"]')) {
+        const allOpt = document.createElement('option');
+        allOpt.value = 'ALL'; allOpt.textContent = '🌐 All States';
+        sel.insertBefore(allOpt, sel.firstChild);
+    }
+    sel.value = 'ALL';
+    document.getElementById('m-state').required = false;
+    new bootstrap.Modal(document.getElementById('uModal')).show();
+}
+
+// Legacy openAddModal kept for edit mode (called programmatically)
+function openAddModal() { openManagerModal(); }
+
+// Show/hide state field based on role
+function toggleStateField() {
+    const role = document.getElementById('m-role').value;
+    const sel = document.getElementById('m-state');
+    if (role === 'Admin') {
+        document.getElementById('state-field').style.display = 'none';
+        document.getElementById('m-state').required = false;
+    } else if (role === 'Analyst') {
+        document.getElementById('state-field').style.display = 'block';
+        sel.classList.remove('d-none');
+        document.getElementById('analyst-state-info').classList.add('d-none');
+        // Ensure ALL option exists
+        if (!sel.querySelector('option[value="ALL"]')) {
+            const allOpt = document.createElement('option');
+            allOpt.value = 'ALL'; allOpt.textContent = '🌐 All States';
+            sel.insertBefore(allOpt, sel.firstChild);
+        }
+        document.getElementById('m-state').required = false;
+    } else {
+        document.getElementById('state-field').style.display = 'block';
+        sel.classList.remove('d-none');
+        document.getElementById('analyst-state-info').classList.add('d-none');
+        document.getElementById('m-state').required = (role !== '');
+    }
+}
+
+async function loadData(page = 1) {
+    const search = document.getElementById('u-search').value.trim();
+    try {
+        const res = await axios.get(`/api/users?page=${page}&search=${encodeURIComponent(search)}&_=${Date.now()}`);
+        const data = res.data.data;
+
+        document.getElementById('u-table').innerHTML = data.items.length
+            ? data.items.map(u => `
+                <tr>
+                    <td><strong>${u.username}</strong></td>
+                    <td>${u.email}</td>
+                    <td><span class="badge bg-secondary">${u.role}</span></td>
+                    <td>${u.state_name || 'N/A'}</td>
+                    <td>
+                        <span class="badge ${u.is_active ? 'bg-success' : 'bg-danger'}">
+                            ${u.is_active ? 'Active' : 'Disabled'}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <button class="btn btn-sm btn-outline-info" onclick="viewU(${u.id})">
+                                <i class="bi bi-eye me-1"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editU(${u.id})">
+                                <i class="bi bi-pencil me-1"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete(${u.id}, '${u.username}')">
+                                <i class="bi bi-trash me-1"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('')
+            : `<tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>`;
+
+        buildPagination(data.current_page, data.pages, 'loadData', 'u-pagination');
+    } catch (e) {
+        console.error(e);
+        document.getElementById('u-table').innerHTML =
+            `<tr><td colspan="6" class="text-center text-danger py-4">Failed to load data.</td></tr>`;
+    }
+}
+
+function openAddModal() {
+    editMode = false;
+    document.getElementById('u-form').reset();
+    document.getElementById('modalTitle').innerText = 'Create New User';
+    document.getElementById('photo-preview').classList.add('d-none');
+    document.getElementById('photo-preview').src = '';
+    document.getElementById('photo-field').style.display = 'block';
+    document.getElementById('state-field').style.display = 'block';
+    document.getElementById('m-status').value = 'active';
+    new bootstrap.Modal(document.getElementById('uModal')).show();
+}
+
+async function editU(id) {
+    try {
+        const res = await axios.get(`/api/users/${id}`);
+        const u = res.data.data;
+        editMode = true;
+
+        document.getElementById('m-id').value     = id;
+        document.getElementById('m-uname').value  = u.username;
+        document.getElementById('m-email').value  = u.email;
+        document.getElementById('m-role').value   = u.role;
+        document.getElementById('m-status').value = u.is_active ? 'active' : 'disabled';
+        document.getElementById('modalTitle').innerText = 'Edit User';
+        document.getElementById('status-field').style.display = 'block';
+
+        // Set role badge
+        const roleIcons = { Manager: 'bi-person-gear text-primary', Analyst: 'bi-graph-up-arrow text-success', Admin: 'bi-shield-fill text-danger' };
+        const roleIcon = roleIcons[u.role] || 'bi-person';
+        document.getElementById('m-role-badge').innerHTML = `<i class="bi ${roleIcon} me-2"></i>${u.role}`;
+        const headerColors = { Manager: 'linear-gradient(135deg,#3b82f6,#6366f1)', Analyst: 'linear-gradient(135deg,#10b981,#059669)', Admin: 'linear-gradient(135deg,#ef4444,#b91c1c)' };
+        document.getElementById('modalHeader').style.background = headerColors[u.role] || 'linear-gradient(135deg,#3b82f6,#6366f1)';
+
+        // Show photo field in edit mode — user can update their photo
+        document.getElementById('photo-field').style.display = 'block';
+        const editPreview = document.getElementById('photo-preview');
+        const cachedEditPhoto = window._lastPhotoCache && window._lastPhotoCache[u.id];
+        editPreview.src = cachedEditPhoto
+            ? cachedEditPhoto
+            : (u.photo_url ? `${u.photo_url}?t=${Date.now()}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'U')}&size=200&background=4f46e5&color=fff&bold=true&rounded=true`);
+        editPreview.classList.remove('d-none');
+        editPreview.onerror = () => { editPreview.onerror = null; editPreview.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'U')}&size=200&background=4f46e5&color=fff&bold=true&rounded=true`; };
+
+        toggleStateField();
+        // Set state after toggleStateField so the field is visible
+        if (u.state_id && u.state_id !== 'ALL') {
+            setTimeout(() => {
+                document.getElementById('m-state').value = u.state_id;
+            }, 50);
+        }
+        // For analyst, ensure "All States" info is shown
+        if (u.role === 'Analyst') {
+            // Show dropdown with ALL option for analyst editing
+            const sel = document.getElementById('m-state');
+            if (!sel.querySelector('option[value="ALL"]')) {
+                const allOpt = document.createElement('option');
+                allOpt.value = 'ALL'; allOpt.textContent = '🌐 All States';
+                sel.insertBefore(allOpt, sel.firstChild);
+            }
+            sel.classList.remove('d-none');
+            document.getElementById('analyst-state-info').classList.add('d-none');
+            sel.value = (u.state_id && u.state_id !== 'ALL') ? u.state_id : 'ALL';
+        }
+
+        new bootstrap.Modal(document.getElementById('uModal')).show();
+    } catch (e) {
+        alert('Error fetching user data.');
+    }
+}
+
+async function viewU(id) {
+    try {
+        const res = await axios.get(`/api/users/${id}`);
+        const u = res.data.data;
+
+        document.getElementById('v-uname').innerText   = u.username   || 'N/A';
+        document.getElementById('v-email').innerText   = u.email      || 'N/A';
+        document.getElementById('v-role').innerHTML    = `<span class="badge bg-secondary">${u.role || 'N/A'}</span>`;
+        document.getElementById('v-state').innerText   = u.state_name || 'N/A';
+        document.getElementById('v-manager').innerText = u.manager_name || 'N/A';
+        document.getElementById('v-status').innerHTML  =
+            `<span class="badge ${u.is_active ? 'bg-success' : 'bg-danger'}">${u.is_active ? 'Active' : 'Disabled'}</span>`;
+
+        // Show photo if available
+        const photoHeader = document.getElementById('v-photo-header');
+        const photoImg    = document.getElementById('v-photo');
+        const photoName   = document.getElementById('v-photo-name');
+        const fallbackSrc = `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'U')}&size=200&background=4f46e5&color=fff&bold=true&rounded=true`;
+        // Use freshly uploaded photo (cache-busted) if available, else API value
+        const cachedPhoto = window._lastPhotoCache && window._lastPhotoCache[u.id];
+        const photoSrc = cachedPhoto
+            ? cachedPhoto
+            : (u.photo_url && u.photo_url.trim() ? `${u.photo_url}?t=${Date.now()}` : null);
+        photoImg.onerror = () => { photoImg.onerror = null; photoImg.src = fallbackSrc; };
+        photoImg.src = photoSrc || fallbackSrc;
+        photoHeader.classList.remove('d-none');
+        photoName.innerText = u.username || '';
+
+        new bootstrap.Modal(document.getElementById('viewModal')).show();
+    } catch (e) {
+        alert('Error fetching user details.');
+    }
+}
+
+function confirmDelete(id, username) {
+    deleteUserId = id;
+    document.getElementById('delete-username').innerText = username;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+document.getElementById('btn-confirm-delete').onclick = async () => {
+    if (!deleteUserId) return;
+    try {
+        const res = await axios.delete(`/api/users/${deleteUserId}`);
+        if (res.data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+            // Small delay then reload to ensure DB commit is visible
+            setTimeout(() => loadData(1), 150);
+        } else {
+            alert(res.data.message || 'Delete failed.');
+        }
+    } catch (e) {
+        alert(e.response?.data?.message || 'Error deleting user.');
+    }
+    deleteUserId = null;
+};
+
+function previewPhoto(input) {
+    const preview = document.getElementById('photo-preview');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            preview.src = e.target.result;
+            preview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+document.getElementById('u-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const id  = document.getElementById('m-id').value;
+    const btn = document.getElementById('btn-save');
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
+    btn.disabled  = true;
+
+    const role = document.getElementById('m-role').value;
+    const photoInput = document.getElementById('m-photo');
+    const hasPhoto = photoInput && photoInput.files && photoInput.files[0];
+
+    try {
+        if (editMode) {
+            // Edit mode: FormData PUT (supports photo upload)
+            const statusVal = document.getElementById('m-status').value;
+            const stateVal  = document.getElementById('m-state').value;
+            const fd = new FormData();
+            fd.append('username',  document.getElementById('m-uname').value.trim());
+            fd.append('email',     document.getElementById('m-email').value.trim());
+            fd.append('role',      role);
+            fd.append('is_active', statusVal === 'active' ? 'true' : 'false');
+            if (role !== 'Admin' && stateVal) fd.append('state_id', stateVal);
+            if (hasPhoto) fd.append('photo', photoInput.files[0]);
+            const putRes = await axios.put(`/api/users/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            // Update photo immediately in view modal if it's open
+            if (putRes.data && putRes.data.data) {
+                const updated = putRes.data.data;
+                const ts = Date.now();
+                const bust = url => url && !url.startsWith('http') ? `${url}?t=${ts}` : url;
+                const resolvedPhoto = updated.photo_url
+                    ? bust(updated.photo_url)
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(updated.username||'U')}&size=200&background=4f46e5&color=fff&bold=true&rounded=true`;
+                // Store the latest photo for this user so viewU can use it
+                window._lastPhotoCache = window._lastPhotoCache || {};
+                window._lastPhotoCache[updated.id] = resolvedPhoto;
+                // Update edit preview immediately
+                const editPreview = document.getElementById('photo-preview');
+                if (editPreview) { editPreview.src = resolvedPhoto; editPreview.classList.remove('d-none'); }
+            }
+        } else {
+            // Create mode: use FormData to support photo upload
+            const fd = new FormData();
+            fd.append('username', document.getElementById('m-uname').value.trim());
+            fd.append('email',    document.getElementById('m-email').value.trim());
+            fd.append('role',     role);
+            // Send state_id for both Manager and Analyst (Analyst can be ALL or specific)
+            if (role === 'Manager' || role === 'Analyst') fd.append('state_id', document.getElementById('m-state').value || 'ALL');
+            if (hasPhoto) fd.append('photo', photoInput.files[0]);
+            await axios.post('/api/users', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        }
+        bootstrap.Modal.getInstance(document.getElementById('uModal')).hide();
+        loadData(1);
+    } catch (err) {
+        alert(err.response?.data?.message || 'Error saving user.');
+    }
+
+    btn.innerHTML = '<i class="bi bi-save me-1"></i>Save User';
+    btn.disabled  = false;
+};
+
+function buildPagination(current, total, loadFn, containerId) {
+    if (total <= 1) { document.getElementById(containerId).innerHTML = ''; return; }
+    let h = '';
+    if (current > 1)  h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current-1});return false;">‹</a></li>`;
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="${loadFn}(${i});return false;">${i}</a></li>`;
+        } else if (Math.abs(i - current) === 3) {
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+        }
+    }
+    if (current < total) h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current+1});return false;">›</a></li>`;
+    document.getElementById(containerId).innerHTML = h;
+}
+
+</script>
+{% endblock %}

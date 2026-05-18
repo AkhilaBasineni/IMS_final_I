@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .msg-card { border-radius: 12px; border: 1px solid #e2e8f0; transition: 0.2s; cursor: pointer; }
+    .msg-card:hover { border-color: #4f46e5; box-shadow: 0 4px 20px rgba(79,70,229,0.08); }
+    .msg-card.unread { border-left: 4px solid #4f46e5; background: #fafafe; }
+    .msg-card.replied { border-left: 4px solid #10b981; }
+    .msg-card.read    { border-left: 4px solid #94a3b8; }
+    .status-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .reply-box { display: none; border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 16px; }
+    .filter-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+
+    .page-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 24px 28px; color: white;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .page-header::after {
+        content: ''; position: absolute; right: -30px; top: -30px;
+        width: 180px; height: 180px; background: rgba(79,70,229,0.15);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header::before {
+        content: ''; position: absolute; right: 60px; bottom: -50px;
+        width: 120px; height: 120px; background: rgba(99,102,241,0.12);
+        border-radius: 50%; pointer-events: none;
+    }
+    .page-header h2 { color: white !important; font-weight: 800; margin-bottom: 4px; }
+    .page-header h2 i { opacity: 0.85; }
+    .page-header small, .page-header p.sub { color: #94a3b8 !important; font-size: 0.875rem; margin: 0; }
+    .page-header .header-action { 
+        background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 10px 20px; color: white; font-weight: 600;
+        font-size: 0.85rem; transition: all 0.3s ease; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(10px);
+        position: relative; z-index: 10;
+    }
+    .page-header .header-action:hover {
+        background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5);
+        transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        color: white; text-decoration: none;
+    }
+</style>
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-envelope-paper-fill me-2"></i>Contact Inbox</h2>
+            <p class="sub mb-0">Messages submitted via the public contact form</p>
+        </div>
+        <button class="header-action" onclick="loadMessages(1)"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </div>
+</div>
+
+<!-- Filter tabs -->
+<div class="mb-4 d-flex gap-2 flex-wrap">
+    <button class="btn btn-sm btn-outline-secondary filter-btn active" data-status="" onclick="setFilter(this, '')">All</button>
+    <button class="btn btn-sm btn-outline-secondary filter-btn" data-status="unread" onclick="setFilter(this, 'unread')">
+        <i class="bi bi-circle-fill text-primary me-1" style="font-size:8px;"></i>Unread
+    </button>
+    <button class="btn btn-sm btn-outline-secondary filter-btn" data-status="read" onclick="setFilter(this, 'read')">
+        <i class="bi bi-circle-fill text-secondary me-1" style="font-size:8px;"></i>Read
+    </button>
+    <button class="btn btn-sm btn-outline-secondary filter-btn" data-status="replied" onclick="setFilter(this, 'replied')">
+        <i class="bi bi-circle-fill text-success me-1" style="font-size:8px;"></i>Replied
+    </button>
+</div>
+
+<!-- Messages list -->
+<div id="messages-container">
+    <div class="text-center py-5 text-muted">
+        <div class="spinner-border spinner-border-sm me-2"></div> Loading messages…
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-2">
+    <span id="msg-info" class="text-muted small"></span>
+    <nav><ul class="pagination pagination-sm mb-0" id="msg-pagination"></ul></nav>
+</div>
+
+<!-- Reply Modal -->
+<div class="modal fade" id="replyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header" style="background: linear-gradient(135deg,#0f172a,#4f46e5); color:white;">
+                <h5 class="modal-title"><i class="bi bi-reply me-2"></i>Reply to Message</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="bg-light rounded p-3 mb-3" id="modal-original"></div>
+                <label class="form-label fw-bold small text-muted">Your Reply</label>
+                <textarea id="reply-text" class="form-control" rows="6"
+                    placeholder="Type your reply here…"></textarea>
+                <div id="reply-alert" class="alert d-none mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="sendReply()">
+                    <i class="bi bi-send me-1"></i> Send Reply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let _activeFilter = '';
+let _replyMsgId   = null;
+
+// Get token from localStorage (same as base.html uses)
+function getToken() {
+    return localStorage.getItem('access_token');
+}
+
+// Configure axios to always include token
+axios.interceptors.request.use(config => {
+    const token = getToken();
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+function setFilter(btn, status) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _activeFilter = status;
+    loadMessages(1);
+}
+
+async function loadMessages(page = 1) {
+    const container = document.getElementById('messages-container');
+    container.innerHTML = '<div class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm me-2"></div> Loading…</div>';
+
+    try {
+        const params = new URLSearchParams({ page, per_page: 15 });
+        if (_activeFilter) params.append('status', _activeFilter);
+
+        const res = await axios.get(`/api/contact/messages?${params}`);
+        const d = res.data.data;
+
+        if (!d.items.length) {
+            container.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-inbox display-4"></i><p class="mt-3">No messages found.</p></div>';
+            document.getElementById('msg-info').textContent = '';
+            document.getElementById('msg-pagination').innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = d.items.map(m => `
+            <div class="msg-card ${m.status} p-4 mb-3" id="msg-${m.id}" onclick="expandMsg(${m.id})">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h6 class="mb-1 fw-bold">${escapeHtml(m.first_name)} ${escapeHtml(m.last_name)}
+                            <span class="status-badge ms-2 ${badgeClass(m.status)}">${m.status}</span>
+                        </h6>
+                        <small class="text-muted"><i class="bi bi-envelope me-1"></i>${escapeHtml(m.email)}</small>
+                    </div>
+                    <small class="text-muted">${formatDate(m.created_at)}</small>
+                </div>
+                <p class="mt-2 mb-0 text-secondary msg-preview" id="preview-${m.id}"
+                   style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:600px;">
+                    ${escapeHtml(m.message)}
+                </p>
+                <div class="reply-box" id="expand-${m.id}">
+                    <p class="text-dark mb-3" style="white-space:pre-wrap;">${escapeHtml(m.message)}</p>
+                    ${m.admin_reply ? `
+                    <div class="alert alert-success py-2">
+                        <strong><i class="bi bi-check-circle me-1"></i>Replied on ${formatDate(m.replied_at)}:</strong>
+                        <p class="mb-0 mt-1" style="white-space:pre-wrap;">${escapeHtml(m.admin_reply)}</p>
+                    </div>` : ''}
+                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openReply(event, ${m.id}, '${escapeAttr(m.first_name)}', '${escapeAttr(m.email)}', \`${escapeAttr(m.message)}\`)">
+                        <i class="bi bi-reply me-1"></i>${m.status === 'replied' ? 'Send Another Reply' : 'Reply'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        const from = (page - 1) * 15 + 1;
+        const to   = from + d.items.length - 1;
+        document.getElementById('msg-info').textContent = `Showing ${from}–${to} of ${d.total} messages`;
+        renderPagination(page, d.pages);
+
+    } catch(e) {
+        console.error('Load messages error:', e);
+        if (e.response?.status === 401) {
+            container.innerHTML = '<div class="text-center py-5 text-danger"><i class="bi bi-lock-fill me-2"></i>Session expired. Please <a href="/login">login again</a>.</div>';
+        } else {
+            const err = e.response?.data?.message || e.message;
+            container.innerHTML = `<div class="alert alert-danger">Error: ${err}</div>`;
+        }
+    }
+}
+
+function expandMsg(id) {
+    const box = document.getElementById(`expand-${id}`);
+    const preview = document.getElementById(`preview-${id}`);
+    const isOpen = box.style.display === 'block';
+    box.style.display = isOpen ? 'none' : 'block';
+    preview.style.display = isOpen ? '' : 'none';
+    if (!isOpen) markRead(id);
+}
+
+async function markRead(id) {
+    const card = document.getElementById(`msg-${id}`);
+    if (!card || !card.classList.contains('unread')) return;
+    try {
+        await axios.put(`/api/contact/messages/${id}/mark-read`);
+        card.classList.remove('unread');
+        card.classList.add('read');
+        const badge = card.querySelector('.status-badge');
+        if (badge) { badge.textContent = 'read'; badge.className = 'status-badge ms-2 ' + badgeClass('read'); }
+    } catch(e) { console.error('Mark read error:', e); }
+}
+
+function openReply(e, id, firstName, email, message) {
+    if (e) e.stopPropagation();
+    _replyMsgId = id;
+    document.getElementById('modal-original').innerHTML =
+        `<strong>To:</strong> ${escapeHtml(firstName)} &lt;${escapeHtml(email)}&gt;<br>
+         <strong>Message:</strong><br><span class="text-muted">${escapeHtml(message)}</span>`;
+    document.getElementById('reply-text').value = '';
+    document.getElementById('reply-alert').className = 'alert d-none';
+    new bootstrap.Modal(document.getElementById('replyModal')).show();
+}
+
+async function sendReply() {
+    const replyText = document.getElementById('reply-text').value.trim();
+    const alertEl   = document.getElementById('reply-alert');
+
+    if (!replyText) {
+        alertEl.className = 'alert alert-warning mt-3';
+        alertEl.textContent = 'Please enter a reply message.';
+        return;
+    }
+
+    try {
+        const res = await axios.post(`/api/contact/messages/${_replyMsgId}/reply`, { reply: replyText });
+
+        alertEl.className = 'alert alert-success mt-3';
+        alertEl.textContent = res.data.message;
+
+        const card = document.getElementById(`msg-${_replyMsgId}`);
+        if (card) {
+            card.classList.remove('unread','read');
+            card.classList.add('replied');
+            const badge = card.querySelector('.status-badge');
+            if (badge) { badge.textContent = 'replied'; badge.className = 'status-badge ms-2 ' + badgeClass('replied'); }
+        }
+
+        setTimeout(() => {
+            bootstrap.Modal.getInstance(document.getElementById('replyModal'))?.hide();
+            loadMessages(1);
+        }, 1500);
+
+    } catch(e) {
+        alertEl.className = 'alert alert-danger mt-3';
+        alertEl.textContent = e.response?.data?.message || 'Failed to send reply.';
+    }
+}
+
+function renderPagination(current, total) {
+    buildPagination(current, total, 'loadMessages', 'msg-pagination');
+}
+
+function paginationRange(current, total) {
+    const delta = 2;
+    const range = [];
+    for (let i = Math.max(2, current-delta); i <= Math.min(total-1, current+delta); i++) range.push(i);
+    if (range[0]-1 > 1) range.unshift('...');
+    if (total - range[range.length-1] > 1) range.push('...');
+    range.unshift(1);
+    if (total > 1) range.push(total);
+    return range;
+}
+
+function badgeClass(s) {
+    return s==='unread'  ? 'bg-primary text-white'
+         : s==='replied' ? 'bg-success text-white'
+         : 'bg-secondary text-white';
+}
+
+function formatDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function escapeHtml(s) { 
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); 
+}
+
+function escapeAttr(s) { 
+    return String(s || '').replace(/`/g,'\\`').replace(/'/g,"\\'"); 
+}
+
+function loadPageData() { loadMessages(1); }
+
+function buildPagination(current, total, loadFn, containerId) {
+    if (total <= 1) { document.getElementById(containerId).innerHTML = ''; return; }
+    let h = '';
+    if (current > 1)  h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current-1});return false;">‹</a></li>`;
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+            h += `<li class="page-item ${i===current?'active':''}"><a class="page-link" href="#" onclick="${loadFn}(${i});return false;">${i}</a></li>`;
+        } else if (Math.abs(i - current) === 3) {
+            h += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+        }
+    }
+    if (current < total) h += `<li class="page-item"><a class="page-link" href="#" onclick="${loadFn}(${current+1});return false;">›</a></li>`;
+    document.getElementById(containerId).innerHTML = h;
+}
+
+</script>
+{% endblock %}

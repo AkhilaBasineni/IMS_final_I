@@ -1,0 +1,820 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    /* ── KPI Cards ─────────────────────────────────────── */
+    .kpi-card { border-radius: 16px; padding: 20px 22px; background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 2px 12px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 18px; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.09) !important; }
+    .kpi-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+    .kpi-body { flex: 1; min-width: 0; }
+    .kpi-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; color: #94a3b8; margin-bottom: 4px; }
+    .kpi-val { font-size: 1.8rem; font-weight: 800; color: #0f172a; line-height: 1; }
+    .kpi-sub { font-size: 0.72rem; color: #94a3b8; margin-top: 4px; }
+
+    /* ── Page header ───────────────────────────────────── */
+    .promo-header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #312e81 100%); border-radius: 20px; padding: 28px 32px; color: white; margin-bottom: 28px; }
+    .promo-header h4 { font-weight: 800; margin: 0; letter-spacing: -0.3px; }
+    .promo-header p  { margin: 4px 0 0; opacity: 0.75; font-size: 0.88rem; }
+
+    /* ── Table / card styles ───────────────────────────── */
+    .table-card { border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 2px 8px rgba(0,0,0,0.05); background:#fff; }
+    .table-card .card-header { background: transparent; border-bottom: 1px solid #f1f5f9; padding: 18px 22px 14px; }
+    .table-card .card-header h6 { font-weight: 700; font-size: 0.9rem; margin: 0; }
+
+    .promo-table thead th { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; border-bottom: 2px solid #f1f5f9; white-space: nowrap; padding: 12px 14px; background: #f8fafc; }
+    .promo-table tbody td { font-size: 0.875rem; padding: 13px 14px; vertical-align: middle; border-bottom: 1px solid #f8fafc; }
+    .promo-table tbody tr:hover { background: #f8faff; }
+
+    /* ── Status badges ─────────────────────────────────── */
+    .badge-active    { background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 700; padding: 4px 11px; border-radius: 20px; }
+    .badge-scheduled { background: #dbeafe; color: #1e40af; font-size: 0.72rem; font-weight: 700; padding: 4px 11px; border-radius: 20px; }
+    .badge-expired   { background: #f1f5f9; color: #64748b; font-size: 0.72rem; font-weight: 700; padding: 4px 11px; border-radius: 20px; }
+    .badge-pct  { background: #ede9fe; color: #6d28d9; font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+    .badge-flat { background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+
+    /* ── Search / filter bar ───────────────────────────── */
+    .filter-bar { background: #fff; border-radius: 14px; border: 1px solid #f1f5f9; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .filter-bar .form-control, .filter-bar .form-select { border-radius: 9px; font-size: 0.875rem; border-color: #e2e8f0; }
+    .filter-bar .form-control:focus, .filter-bar .form-select:focus { box-shadow: 0 0 0 3px rgba(79,70,229,0.12); border-color: #6366f1; }
+
+    /* ── Buttons ───────────────────────────────────────── */
+    .btn-promo-create { background: #4f46e5; color: white; border: none; border-radius: 10px; font-size: 0.875rem; font-weight: 600; padding: 9px 20px; }
+    .btn-promo-create:hover { background: #4338ca; color: white; }
+    .btn-filter { background: #4f46e5; color: #fff; border: none; border-radius: 9px; font-size: 0.875rem; font-weight: 600; padding: 8px 20px; cursor: pointer; transition: background 0.15s; }
+    .btn-filter:hover { background: #4338ca; }
+    .btn-icon { border: none; background: transparent; padding: 5px 8px; border-radius: 7px; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; }
+    .btn-icon:hover { background: #f1f5f9; }
+    .btn-icon.del:hover  { background: #fee2e2; color: #dc2626; }
+    .btn-icon.edit:hover { background: #eff6ff; color: #2563eb; }
+    .btn-icon.view:hover { background: #f0fdf4; color: #16a34a; }
+
+    /* ── Pagination ────────────────────────────────────── */
+    .pagination-wrapper { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid #f1f5f9; font-size: 0.82rem; color: #64748b; flex-wrap: wrap; gap: 8px; }
+    .page-btn { border: 1px solid #e2e8f0; background: #fff; border-radius: 7px; padding: 4px 11px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: #475569; transition: all 0.15s; }
+    .page-btn:hover { background: #4f46e5; color: white; border-color: #4f46e5; }
+    .page-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+    .page-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Modal styles ──────────────────────────────────── */
+    .modal-header-promo { background: linear-gradient(135deg, #1e293b, #312e81); color: white; border-radius: 16px 16px 0 0; padding: 22px 24px; }
+    .modal-content { border-radius: 16px; border: none; box-shadow: 0 24px 48px rgba(0,0,0,0.15); }
+    .modal-body { padding: 24px; }
+    .form-label-sm { font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; display: block; }
+    .form-control-promo, .form-select-promo { border-radius: 9px; border: 1px solid #e2e8f0; font-size: 0.875rem; padding: 9px 13px; width: 100%; }
+    .form-control-promo:focus, .form-select-promo:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(79,70,229,0.12); outline: none; }
+
+    /* ── Live pulse ────────────────────────────────────── */
+    .live-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.7rem; font-weight: 700; color: #10b981; background: #d1fae5; padding: 3px 10px; border-radius: 20px; }
+    .live-dot { width: 7px; height: 7px; background: #10b981; border-radius: 50%; animation: pulse-dot 1.5s infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)} }
+
+    /* ── Empty state ───────────────────────────────────── */
+    .empty-state { text-align: center; padding: 50px 20px; color: #94a3b8; }
+    .empty-state i { font-size: 3rem; margin-bottom: 12px; display: block; }
+
+    /* ── Toast ─────────────────────────────────────────── */
+    #promoToast { position: fixed; bottom: 28px; right: 28px; z-index: 9999; min-width: 300px; border-radius: 12px; font-size: 0.875rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+
+    /* ── Discount value ────────────────────────────────── */
+    .discount-val { font-weight: 700; font-size: 0.95rem; color: #0f172a; }
+
+    @media (max-width: 768px) {
+        .promo-header { padding: 20px; }
+        .promo-header h4 { font-size: 1.2rem; }
+    }
+</style>
+
+<!-- ── Page Header ─────────────────────────────────────────────────────── -->
+<div class="promo-header d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div>
+        <h4><i class="bi bi-tags-fill me-2"></i>Promotions &amp; Discounts</h4>
+        <p>Manage all product promotions, discount campaigns, and offer periods</p>
+    </div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+        <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+        <button class="btn-promo-create btn" onclick="openCreateModal()">
+            <i class="bi bi-plus-lg me-1"></i>New Promotion
+        </button>
+    </div>
+</div>
+
+<!-- ── KPI Row 1 ───────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#6366f118;"><i class="bi bi-tags-fill" style="color:#6366f1;"></i></div>
+            <div class="kpi-body">
+                <div class="kpi-label">Total Promotions</div>
+                <div class="kpi-val" id="kpi-total">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#10b98118;"><i class="bi bi-lightning-charge-fill" style="color:#10b981;"></i></div>
+            <div class="kpi-body">
+                <div class="kpi-label">Active</div>
+                <div class="kpi-val" id="kpi-active">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#3b82f618;"><i class="bi bi-clock-fill" style="color:#3b82f6;"></i></div>
+            <div class="kpi-body">
+                <div class="kpi-label">Scheduled</div>
+                <div class="kpi-val" id="kpi-scheduled">—</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── KPI Row 2 ───────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#94a3b818;"><i class="bi bi-archive-fill" style="color:#94a3b8;"></i></div>
+            <div class="kpi-body">
+                <div class="kpi-label">Expired</div>
+                <div class="kpi-val" id="kpi-expired">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#8b5cf618;"><i class="bi bi-percent" style="color:#8b5cf6;"></i></div>
+            <div class="kpi-body">
+                <div class="kpi-label">Avg % Discount</div>
+                <div class="kpi-val" id="kpi-avg-pct">—</div>
+                <div class="kpi-sub">percentage type</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#f59e0b18;"><i class="bi bi-currency-rupee" style="color:#f59e0b;"></i></div>
+            <div class="kpi-body">
+                <div class="kpi-label">Avg Flat Discount</div>
+                <div class="kpi-val" id="kpi-avg-flat">—</div>
+                <div class="kpi-sub">flat type</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Filter Bar ─────────────────────────────────────────────────────── -->
+<div class="filter-bar d-flex flex-wrap align-items-center gap-3">
+    <div class="flex-grow-1" style="min-width:220px;">
+        <div class="input-group">
+            <span class="input-group-text" style="border-radius:9px 0 0 9px;background:#f8fafc;border-color:#e2e8f0;">
+                <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" id="searchInput" class="form-control"
+                placeholder="Search promotion ID, product, site…"
+                style="border-radius:0 9px 9px 0;border-left:none;"
+                onkeydown="if(event.key==='Enter') applyFilters()">
+        </div>
+    </div>
+    <select id="statusFilter" class="form-select" style="max-width:155px;">
+        <option value="">All Statuses</option>
+        <option value="Active">Active</option>
+        <option value="Scheduled">Scheduled</option>
+        <option value="Expired">Expired</option>
+    </select>
+    <select id="typeFilter" class="form-select" style="max-width:160px;">
+        <option value="">All Types</option>
+        <option value="Percentage">Percentage</option>
+        <option value="Flat">Flat</option>
+    </select>
+    <button class="btn-filter" onclick="applyFilters()">
+        <i class="bi bi-funnel-fill me-1"></i>Filter
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" style="border-radius:9px;" onclick="resetFilters()">
+        <i class="bi bi-x-lg me-1"></i>Reset
+    </button>
+</div>
+
+<!-- ── Promotions Table ───────────────────────────────────────────────── -->
+<div class="table-card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h6><i class="bi bi-table me-2" style="color:#6366f1;"></i>All Promotions</h6>
+        <span class="text-muted" style="font-size:0.78rem;" id="tableInfo">Loading…</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table promo-table mb-0">
+            <thead>
+                <tr>
+                    <th>Promo ID</th>
+                    <th>Product</th>
+                    <th>Site</th>
+                    <th>Discount</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="promoTableBody">
+            <tr><td colspan="9" class="text-center text-muted py-5">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="pagination-wrapper" id="paginationWrapper"></div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────────
+     CREATE / EDIT MODAL
+──────────────────────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="promoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header-promo d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="mb-0 fw-bold" id="modalTitle">New Promotion</h5>
+                    <p class="mb-0 mt-1" style="opacity:.75;font-size:.82rem;" id="modalSubtitle">Fill in the details below</p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalErrors" class="alert alert-danger d-none py-2" style="border-radius:9px;font-size:0.82rem;"></div>
+                <input type="hidden" id="editPromoId">
+
+                <div class="row g-3">
+                    <!-- Product Dropdown -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label-sm">Product <span class="text-danger">*</span></label>
+                        <select id="productDropdown" class="form-select form-select-promo" onchange="onProductSelect()">
+                            <option value="">— Loading products… —</option>
+                        </select>
+                        <div id="selectedProductInfo" style="font-size:0.78rem;color:#6366f1;margin-top:4px;min-height:16px;"></div>
+                    </div>
+
+                    <!-- Site Dropdown -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label-sm">Site / Warehouse <span class="text-danger">*</span></label>
+                        <select id="siteDropdown" class="form-select form-select-promo" onchange="onSiteSelect()">
+                            <option value="">— Loading sites… —</option>
+                        </select>
+                        <div id="selectedSiteInfo" style="font-size:0.78rem;color:#6366f1;margin-top:4px;min-height:16px;"></div>
+                    </div>
+
+                    <!-- Discount Type -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label-sm">Discount Type <span class="text-danger">*</span></label>
+                        <select id="discountType" class="form-select form-select-promo" onchange="updateDiscountHint()">
+                            <option value="">Select type</option>
+                            <option value="Percentage">Percentage (%)</option>
+                            <option value="Flat">Flat Amount (₹)</option>
+                        </select>
+                    </div>
+
+                    <!-- Discount Amount -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label-sm">Discount Amount <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text" id="discountSymbol"
+                                style="border-radius:9px 0 0 9px;background:#f8fafc;border-color:#e2e8f0;font-weight:700;color:#6366f1;">%</span>
+                            <input type="number" id="discountAmount" class="form-control form-control-promo"
+                                placeholder="0.00" min="0.01" step="0.01"
+                                style="border-radius:0 9px 9px 0;" oninput="updatePreview()">
+                        </div>
+                        <div id="discountHint" style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">
+                            Enter percentage between 0.01 and 100
+                        </div>
+                    </div>
+
+                    <!-- Start Date -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label-sm">Start Date <span class="text-danger">*</span></label>
+                        <input type="date" id="startDate" class="form-control form-control-promo" oninput="updatePreview()">
+                    </div>
+
+                    <!-- End Date -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label-sm">End Date <span class="text-danger">*</span></label>
+                        <input type="date" id="endDate" class="form-control form-control-promo" oninput="updatePreview()">
+                    </div>
+                </div>
+
+                <!-- Live Preview Strip -->
+                <div id="promoPreview" class="mt-4 p-3 d-none"
+                    style="background:#f8faff;border-radius:11px;border:1px solid #e0e7ff;">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div style="font-size:0.75rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Preview</div>
+                        <div style="font-size:0.875rem;" id="previewProduct">—</div>
+                        <div style="font-size:0.875rem;" id="previewSite">—</div>
+                        <div style="font-size:0.875rem;" id="previewDates">—</div>
+                        <div style="font-size:1rem;font-weight:800;color:#4f46e5;" id="previewDiscount">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 pt-0 gap-2">
+                <button type="button" class="btn btn-light" style="border-radius:9px;" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" style="border-radius:9px;font-weight:600;"
+                    onclick="savePromotion()" id="saveBtn">
+                    <i class="bi bi-floppy me-1"></i>Save Promotion
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────────
+     VIEW MODAL
+──────────────────────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header-promo d-flex align-items-center justify-content-between">
+                <h5 class="mb-0 fw-bold" id="viewTitle">Promotion Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="viewBody" style="padding:24px;"></div>
+            <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                <button class="btn btn-outline-primary btn-sm" style="border-radius:9px;"
+                    onclick="editFromView()"><i class="bi bi-pencil me-1"></i>Edit</button>
+                <button class="btn btn-light btn-sm" style="border-radius:9px;" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────────
+     DELETE CONFIRM MODAL
+──────────────────────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius:16px;">
+            <div class="modal-body text-center p-4">
+                <div style="width:56px;height:56px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;
+                    justify-content:center;margin:0 auto 14px;font-size:1.5rem;color:#dc2626;">
+                    <i class="bi bi-trash3-fill"></i>
+                </div>
+                <h6 class="fw-bold mb-1">Delete Promotion?</h6>
+                <p style="font-size:0.83rem;color:#64748b;" id="deletePromoLabel">This action cannot be undone.</p>
+                <div class="d-flex gap-2 mt-4 justify-content-center">
+                    <button class="btn btn-light btn-sm" style="border-radius:9px;" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-danger btn-sm" style="border-radius:9px;" id="confirmDeleteBtn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────────────────────── -->
+<div id="promoToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+        <div class="toast-body" id="toastMsg"></div>
+        <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+</div>
+
+<script>
+/* ─── State ────────────────────────────────────────────────────────────── */
+let currentPage    = 1;
+let perPage        = 15;
+let deleteTargetId = null;
+let viewingPromo   = null;
+let allProducts    = [];
+let allSites       = [];
+
+/* ─── Bootstrap modal refs ──────────────────────────────────────────── */
+const promoModal  = new bootstrap.Modal(document.getElementById('promoModal'));
+const viewModal   = new bootstrap.Modal(document.getElementById('viewModal'));
+const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+const toastEl     = new bootstrap.Toast(document.getElementById('promoToast'), { delay: 3200 });
+
+/* ─── Init ──────────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    loadPromotions();
+    prefetchDropdownData();
+});
+
+/* ─── Toast ─────────────────────────────────────────────────────────── */
+function showToast(msg, type = 'success') {
+    const t = document.getElementById('promoToast');
+    t.className = `toast align-items-center border-0 text-bg-${type === 'success' ? 'success' : 'danger'}`;
+    document.getElementById('toastMsg').textContent = msg;
+    toastEl.show();
+}
+
+/* ─── Prefetch Products & Sites for dropdowns ───────────────────────── */
+async function prefetchDropdownData() {
+    try {
+        // Fetch with broad single-char queries to get all records
+        const fetchAll = async (url) => {
+            const chars = ['a','e','i','o','u','p','s','b','c','d','f','g','h','j','k','l','m','n','r','t'];
+            const seen  = new Map();
+            for (const q of chars) {
+                try {
+                    const r = await axios.get(url, { params: { q } });
+                    if (r.data.success) {
+                        const items = r.data.products || r.data.sites || [];
+                        items.forEach(item => {
+                            const key = item.product_id || item.site_id;
+                            if (!seen.has(key)) seen.set(key, item);
+                        });
+                    }
+                } catch(e) {}
+            }
+            return [...seen.values()];
+        };
+
+        const [products, sites] = await Promise.all([
+            fetchAll('/api/promotions/search/products'),
+            fetchAll('/api/promotions/search/sites')
+        ]);
+        allProducts = products;
+        allSites    = sites;
+    } catch (e) { console.warn('Prefetch failed', e); }
+}
+
+function buildProductOptions(selectedId = '') {
+    return '<option value="">— Select Product —</option>' +
+        allProducts.map(p =>
+            `<option value="${p.product_id}"
+                data-name="${p.product_name}"
+                data-cat="${p.category || ''}"
+                data-price="${p.unit_price}"
+                ${p.product_id === selectedId ? 'selected' : ''}>
+                ${p.product_id} — ${p.product_name}
+            </option>`
+        ).join('');
+}
+
+function buildSiteOptions(selectedId = '') {
+    return '<option value="">— Select Site —</option>' +
+        allSites.map(s =>
+            `<option value="${s.site_id}"
+                data-name="${s.site_name}"
+                data-city="${s.city || ''}"
+                ${s.site_id === selectedId ? 'selected' : ''}>
+                ${s.site_id} — ${s.site_name}
+            </option>`
+        ).join('');
+}
+
+/* ─── Dropdown change handlers ──────────────────────────────────────── */
+function onProductSelect() {
+    const sel = document.getElementById('productDropdown');
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('selectedProductInfo').textContent =
+        opt && opt.value
+            ? `${opt.value} · ${opt.dataset.cat} · Unit price: ₹${opt.dataset.price}`
+            : '';
+    updatePreview();
+}
+
+function onSiteSelect() {
+    const sel = document.getElementById('siteDropdown');
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('selectedSiteInfo').textContent =
+        opt && opt.value ? `${opt.value} · ${opt.dataset.city}` : '';
+    updatePreview();
+}
+
+/* ─── Load KPI Stats ────────────────────────────────────────────────── */
+async function loadStats() {
+    try {
+        const r = await axios.get('/api/promotions/stats/summary');
+        if (!r.data.success) return;
+        const s = r.data.stats;
+        document.getElementById('kpi-total').textContent     = s.total;
+        document.getElementById('kpi-active').textContent    = s.active;
+        document.getElementById('kpi-scheduled').textContent = s.scheduled;
+        document.getElementById('kpi-expired').textContent   = s.expired;
+        document.getElementById('kpi-avg-pct').textContent   = s.avg_percentage_discount + '%';
+        document.getElementById('kpi-avg-flat').textContent  = '₹' + s.avg_flat_discount;
+    } catch (e) { console.error('Stats error', e); }
+}
+
+/* ─── Load Promotions Table ─────────────────────────────────────────── */
+async function loadPromotions() {
+    const search = document.getElementById('searchInput').value.trim();
+    const status = document.getElementById('statusFilter').value;
+    const dtype  = document.getElementById('typeFilter').value;
+
+    try {
+        const r = await axios.get('/api/promotions', {
+            params: { page: currentPage, per_page: perPage, search, status, discount_type: dtype }
+        });
+        if (!r.data.success) return;
+        renderTable(r.data.promotions, r.data.pagination);
+    } catch (e) {
+        document.getElementById('promoTableBody').innerHTML =
+            '<tr><td colspan="9" class="text-center text-danger py-4">Failed to load data.</td></tr>';
+    }
+}
+
+function renderTable(promos, pag) {
+    const tbody = document.getElementById('promoTableBody');
+
+    if (!promos.length) {
+        tbody.innerHTML = `<tr><td colspan="6">
+            <div class="empty-state">
+                <i class="bi bi-tag-fill"></i>
+                <div style="font-size:1rem;font-weight:700;color:#334155;margin-bottom:6px;">No promotions found</div>
+                <div style="font-size:0.85rem;">Try adjusting your filters or create a new promotion.</div>
+            </div>
+        </td></tr>`;
+        document.getElementById('tableInfo').textContent = '0 results';
+        document.getElementById('paginationWrapper').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = promos.map(p => {
+        const statusBadge =
+            p.status === 'Active'    ? `<span class="badge-active">${p.status}</span>` :
+            p.status === 'Scheduled' ? `<span class="badge-scheduled">${p.status}</span>` :
+                                       `<span class="badge-expired">${p.status}</span>`;
+
+        const discStr = p.discount_type === 'Percentage'
+            ? `<span class="discount-val">${p.discount_amount}%</span>`
+            : `<span class="discount-val">₹${p.discount_amount.toFixed(2)}</span>`;
+
+        return `<tr>
+            <td><span style="font-size:0.8rem;font-family:monospace;background:#f1f5f9;padding:3px 8px;border-radius:6px;font-weight:700;">${p.promotion_id}</span></td>
+            <td>
+                <div style="font-weight:600;font-size:0.875rem;">${p.product_name}</div>
+                <div style="font-size:0.72rem;color:#94a3b8;">${p.product_id} · ${p.product_category || ''}</div>
+            </td>
+            <td>
+                <div style="font-weight:600;font-size:0.875rem;">${p.site_name}</div>
+                <div style="font-size:0.72rem;color:#94a3b8;">${p.site_id}</div>
+            </td>
+            <td>${discStr}</td>
+            <td>${statusBadge}</td>
+            <td style="text-align:right;">
+                <button class="btn-icon view" onclick="viewPromotion(${p.id})" title="View"
+                    style="border:1px solid #d1fae5;color:#10b981;">
+                    <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn-icon edit" onclick="openEditModal(${p.id})" title="Edit"
+                    style="border:1px solid #bfdbfe;color:#2563eb;">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn-icon del" onclick="confirmDelete(${p.id},'${p.promotion_id}')" title="Delete"
+                    style="border:1px solid #fecaca;color:#dc2626;">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    const start = (pag.page - 1) * pag.per_page + 1;
+    const end   = Math.min(pag.page * pag.per_page, pag.total);
+    document.getElementById('tableInfo').textContent = `Showing ${start}–${end} of ${pag.total} promotions`;
+    renderPagination(pag);
+}
+
+function formatDate(d) {
+    if (!d) return '—';
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/* ─── Pagination ────────────────────────────────────────────────────── */
+function renderPagination(pag) {
+    const el = document.getElementById('paginationWrapper');
+    if (pag.pages <= 1) { el.innerHTML = ''; return; }
+    let btns = '';
+    btns += `<button class="page-btn" onclick="goPage(${pag.page - 1})" ${pag.page === 1 ? 'disabled' : ''}>‹ Prev</button>`;
+    for (let i = 1; i <= pag.pages; i++) {
+        if (i === 1 || i === pag.pages || Math.abs(i - pag.page) <= 2) {
+            btns += `<button class="page-btn ${i === pag.page ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+        } else if (Math.abs(i - pag.page) === 3) {
+            btns += `<span style="padding:4px 6px;color:#94a3b8;">…</span>`;
+        }
+    }
+    btns += `<button class="page-btn" onclick="goPage(${pag.page + 1})" ${pag.page === pag.pages ? 'disabled' : ''}>Next ›</button>`;
+    el.innerHTML = `
+        <span style="font-size:0.82rem;color:#94a3b8;">Page ${pag.page} of ${pag.pages}</span>
+        <div class="d-flex gap-1 flex-wrap">${btns}</div>`;
+}
+
+function goPage(p) { currentPage = p; loadPromotions(); }
+
+/* ─── Filter — only fires on button click ───────────────────────────── */
+function applyFilters() { currentPage = 1; loadPromotions(); }
+
+function resetFilters() {
+    document.getElementById('searchInput').value  = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('typeFilter').value   = '';
+    currentPage = 1;
+    loadPromotions();
+}
+
+/* ─── Discount hint & preview ───────────────────────────────────────── */
+function updateDiscountHint() {
+    const type = document.getElementById('discountType').value;
+    if (type === 'Percentage') {
+        document.getElementById('discountSymbol').textContent = '%';
+        document.getElementById('discountHint').textContent   = 'Enter percentage between 0.01 and 100';
+    } else if (type === 'Flat') {
+        document.getElementById('discountSymbol').textContent = '₹';
+        document.getElementById('discountHint').textContent   = 'Enter flat discount amount in ₹';
+    }
+    updatePreview();
+}
+
+function updatePreview() {
+    const pd    = document.getElementById('productDropdown');
+    const sd    = document.getElementById('siteDropdown');
+    const type  = document.getElementById('discountType').value;
+    const amt   = document.getElementById('discountAmount').value;
+    const sd_   = document.getElementById('startDate').value;
+    const ed_   = document.getElementById('endDate').value;
+
+    const preview = document.getElementById('promoPreview');
+    if (!pd.value && !sd.value && !type && !amt) { preview.classList.add('d-none'); return; }
+    preview.classList.remove('d-none');
+
+    const pName = pd.options[pd.selectedIndex]?.dataset?.name || '';
+    const sName = sd.options[sd.selectedIndex]?.dataset?.name || '';
+
+    document.getElementById('previewProduct').innerHTML  = pd.value ? `<strong>${pName}</strong>` : '<span style="color:#94a3b8;">No product</span>';
+    document.getElementById('previewSite').innerHTML     = sd.value ? `@ <strong>${sName}</strong>` : '<span style="color:#94a3b8;">No site</span>';
+    document.getElementById('previewDates').innerHTML    = sd_ && ed_ ? `<span style="color:#475569;">${formatDate(sd_)} → ${formatDate(ed_)}</span>` : '<span style="color:#94a3b8;">No dates</span>';
+    document.getElementById('previewDiscount').textContent = amt && type
+        ? (type === 'Percentage' ? amt + '% OFF' : '₹' + parseFloat(amt).toFixed(2) + ' OFF') : '—';
+}
+
+/* ─── Create Modal ──────────────────────────────────────────────────── */
+async function openCreateModal() {
+    document.getElementById('modalTitle').textContent    = 'New Promotion';
+    document.getElementById('modalSubtitle').textContent = 'Fill in the details to create a promotion';
+    document.getElementById('saveBtn').innerHTML         = '<i class="bi bi-floppy me-1"></i>Save Promotion';
+    clearModalForm();
+
+    // Ensure fresh data is loaded if not yet
+    if (!allProducts.length || !allSites.length) await prefetchDropdownData();
+    document.getElementById('productDropdown').innerHTML = buildProductOptions();
+    document.getElementById('siteDropdown').innerHTML    = buildSiteOptions();
+    promoModal.show();
+}
+
+function clearModalForm() {
+    document.getElementById('editPromoId').value           = '';
+    document.getElementById('selectedProductInfo').textContent = '';
+    document.getElementById('selectedSiteInfo').textContent    = '';
+    document.getElementById('discountType').value          = '';
+    document.getElementById('discountAmount').value        = '';
+    document.getElementById('startDate').value             = '';
+    document.getElementById('endDate').value               = '';
+    document.getElementById('modalErrors').classList.add('d-none');
+    document.getElementById('promoPreview').classList.add('d-none');
+    document.getElementById('discountSymbol').textContent  = '%';
+    document.getElementById('discountHint').textContent    = 'Enter percentage between 0.01 and 100';
+}
+
+/* ─── Edit Modal ────────────────────────────────────────────────────── */
+async function openEditModal(id) {
+    try {
+        const r = await axios.get(`/api/promotions/${id}`);
+        if (!r.data.success) return;
+        const p = r.data.promotion;
+
+        document.getElementById('modalTitle').textContent    = 'Edit Promotion';
+        document.getElementById('modalSubtitle').textContent = p.promotion_id;
+        document.getElementById('saveBtn').innerHTML         = '<i class="bi bi-floppy me-1"></i>Update Promotion';
+        clearModalForm();
+
+        if (!allProducts.length || !allSites.length) await prefetchDropdownData();
+        document.getElementById('productDropdown').innerHTML = buildProductOptions(p.product_id);
+        document.getElementById('siteDropdown').innerHTML    = buildSiteOptions(p.site_id);
+
+        document.getElementById('editPromoId').value    = p.id;
+        document.getElementById('discountType').value   = p.discount_type;
+        document.getElementById('discountAmount').value = p.discount_amount;
+        document.getElementById('startDate').value      = p.start_date;
+        document.getElementById('endDate').value        = p.end_date;
+
+        onProductSelect();
+        onSiteSelect();
+        updateDiscountHint();
+        updatePreview();
+        promoModal.show();
+    } catch (e) { showToast('Could not load promotion.', 'danger'); }
+}
+
+/* ─── Save Promotion ────────────────────────────────────────────────── */
+async function savePromotion() {
+    const editId  = document.getElementById('editPromoId').value;
+    const payload = {
+        product_id:      document.getElementById('productDropdown').value,
+        site_id:         document.getElementById('siteDropdown').value,
+        discount_type:   document.getElementById('discountType').value,
+        discount_amount: parseFloat(document.getElementById('discountAmount').value),
+        start_date:      document.getElementById('startDate').value,
+        end_date:        document.getElementById('endDate').value,
+    };
+
+    const errEl = document.getElementById('modalErrors');
+    errEl.classList.add('d-none');
+
+    try {
+        const r = editId
+            ? await axios.put(`/api/promotions/${editId}`, payload)
+            : await axios.post('/api/promotions', payload);
+
+        if (r.data.success) {
+            promoModal.hide();
+            showToast(r.data.message);
+            loadPromotions();
+            loadStats();
+        } else {
+            errEl.innerHTML = (r.data.errors || ['Unknown error.']).join('<br>');
+            errEl.classList.remove('d-none');
+        }
+    } catch (err) {
+        const errors = err.response?.data?.errors || ['Server error.'];
+        errEl.innerHTML = errors.join('<br>');
+        errEl.classList.remove('d-none');
+    }
+}
+
+/* ─── View Promotion ────────────────────────────────────────────────── */
+async function viewPromotion(id) {
+    try {
+        const r = await axios.get(`/api/promotions/${id}`);
+        if (!r.data.success) return;
+        const p = r.data.promotion;
+        viewingPromo = p;
+
+        const statusBadge =
+            p.status === 'Active'    ? `<span class="badge-active">${p.status}</span>` :
+            p.status === 'Scheduled' ? `<span class="badge-scheduled">${p.status}</span>` :
+                                       `<span class="badge-expired">${p.status}</span>`;
+
+        document.getElementById('viewTitle').textContent = p.promotion_id;
+        document.getElementById('viewBody').innerHTML = `
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="form-label-sm">Promotion ID</div>
+                    <div style="font-family:monospace;font-weight:700;color:#4f46e5;">${p.promotion_id}</div>
+                </div>
+                <div class="col-6">
+                    <div class="form-label-sm">Status</div>
+                    <div>${statusBadge}</div>
+                </div>
+                <div class="col-12"><hr style="border-color:#f1f5f9;margin:4px 0;"></div>
+                <div class="col-6">
+                    <div class="form-label-sm">Product</div>
+                    <div style="font-weight:700;">${p.product_name}</div>
+                    <div style="font-size:0.75rem;color:#94a3b8;">${p.product_id} · ${p.product_category}</div>
+                </div>
+                <div class="col-6">
+                    <div class="form-label-sm">Site</div>
+                    <div style="font-weight:700;">${p.site_name}</div>
+                    <div style="font-size:0.75rem;color:#94a3b8;">${p.site_id}</div>
+                </div>
+                <div class="col-6">
+                    <div class="form-label-sm">Discount Type</div>
+                    <div style="font-weight:700;">${p.discount_type}</div>
+                </div>
+                <div class="col-6">
+                    <div class="form-label-sm">Discount Amount</div>
+                    <div style="font-size:1.3rem;font-weight:800;color:#4f46e5;">
+                        ${p.discount_type === 'Percentage' ? p.discount_amount + '%' : '₹' + p.discount_amount.toFixed(2)} OFF
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-label-sm">Start Date</div>
+                    <div style="font-weight:600;">${formatDate(p.start_date)}</div>
+                </div>
+                <div class="col-6">
+                    <div class="form-label-sm">End Date</div>
+                    <div style="font-weight:600;">${formatDate(p.end_date)}</div>
+                </div>
+            </div>`;
+
+        viewModal.show();
+    } catch (e) { showToast('Could not load promotion.', 'danger'); }
+}
+
+function editFromView() {
+    viewModal.hide();
+    setTimeout(() => openEditModal(viewingPromo.id), 350);
+}
+
+/* ─── Delete ────────────────────────────────────────────────────────── */
+function confirmDelete(id, promoId) {
+    deleteTargetId = id;
+    document.getElementById('deletePromoLabel').textContent = `Promotion ${promoId} will be permanently removed.`;
+    document.getElementById('confirmDeleteBtn').onclick = executeDelete;
+    deleteModal.show();
+}
+
+async function executeDelete() {
+    try {
+        const r = await axios.delete(`/api/promotions/${deleteTargetId}`);
+        if (r.data.success) {
+            deleteModal.hide();
+            showToast(r.data.message);
+            loadPromotions();
+            loadStats();
+        }
+    } catch (e) { showToast('Delete failed.', 'danger'); }
+}
+</script>
+{% endblock %}

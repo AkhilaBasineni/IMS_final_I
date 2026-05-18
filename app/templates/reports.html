@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .report-header { background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 18px; padding: 22px 26px; color: white; margin-bottom: 24px; }
+    .section-card { border-radius: 16px !important; border: none !important; box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important; }
+    .section-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+    .section-title { font-weight: 700; font-size: 0.95rem; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .progress-thin { height: 6px; border-radius: 4px; }
+    .val-row td { padding: 11px 18px; font-size: 0.87rem; border-bottom: 1px solid #f1f5f9; }
+    .val-row:last-child td { border-bottom: none; }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap-tall { position: relative; height: 320px; }
+    .empty-state { padding: 40px; text-align: center; color: #94a3b8; }
+    .empty-state i { font-size: 2.5rem; margin-bottom: 10px; display: block; }
+    .stat-pill { display: inline-flex; align-items: center; gap: 6px; background: #f8fafc; border-radius: 10px; padding: 5px 14px; font-size: 0.82rem; color: #475569; font-weight: 600; border: 1px solid #e2e8f0; }
+    /* Hide all scrollbars in reports */
+    .table-responsive { overflow: hidden !important; }
+    * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+    *::-webkit-scrollbar { display: none !important; }
+</style>
+
+<!-- Header -->
+<div class="report-header">
+    <div class="d-flex align-items-center justify-content-between">
+        <div>
+            <h2 class="mb-1 fw-bold" style="color:white;"><i class="bi bi-file-earmark-bar-graph me-2"></i>Analytical Reports</h2>
+            <p class="mb-0" style="color:#94a3b8;font-size:0.875rem;">Insights across inventory, sales and product performance</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <span class="stat-pill" id="header-total-val" style="background:rgba(255,255,255,0.08);color:#e2e8f0;border-color:rgba(255,255,255,0.15);">
+                <i class="bi bi-currency-rupee"></i>Loading total...
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Row 1: Stock Valuation table + Top Products bar chart -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card section-card h-100">
+            <div class="section-header">
+                <span class="section-title"><i class="bi bi-pie-chart-fill text-info"></i>Stock Valuation by Category</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th style="padding:10px 18px;font-size:0.77rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border:none;">Category</th>
+                            <th style="padding:10px 18px;font-size:0.77rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border:none;">Items</th>
+                            <th style="padding:10px 18px;font-size:0.77rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border:none;">Share</th>
+                            <th class="text-end" style="padding:10px 18px;font-size:0.77rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border:none;">Total Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="val-table">
+                        <tr><td colspan="4" class="text-center text-muted py-5">
+                            <div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading...
+                        </td></tr>
+                    </tbody>
+                    <tfoot>
+                        <tr style="background:#f8fafc;">
+                            <td colspan="3" style="padding:13px 18px;font-weight:700;font-size:0.9rem;border-top:2px solid #e2e8f0;">GRAND TOTAL</td>
+                            <td class="text-end" style="padding:13px 18px;font-weight:800;font-size:1rem;color:#3b82f6;border-top:2px solid #e2e8f0;" id="val-total">₹0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card section-card h-100">
+            <div class="section-header">
+                <span class="section-title"><i class="bi bi-bar-chart-fill text-success"></i>Top Performing Products</span>
+                <span style="font-size:0.75rem;color:#94a3b8;">by Revenue</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-wrap">
+                    <canvas id="topProductsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Row 3: Category Pie + Revenue vs Cost (if data exists) -->
+<div class="row g-3">
+    <div class="col-md-5">
+        <div class="card section-card h-100">
+            <div class="section-header">
+                <span class="section-title"><i class="bi bi-donut text-warning"></i>Category Distribution</span>
+                <span style="font-size:0.75rem;color:#94a3b8;">by stock value</span>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <div style="position:relative;height:250px;width:100%;">
+                    <canvas id="categoryPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card section-card h-100">
+            <div class="section-header">
+                <span class="section-title"><i class="bi bi-trophy-fill text-warning"></i>Product Revenue Breakdown</span>
+                <span style="font-size:0.75rem;color:#94a3b8;">Top 5 products</span>
+            </div>
+            <div class="card-body" id="topProductsDetail">
+                <div class="empty-state"><i class="bi bi-hourglass-split text-muted"></i>Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+const PALETTE = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#a855f7'];
+
+async function loadPageData() {
+    try {
+        const [valRes, prodRes] = await Promise.all([
+            axios.get('/api/reports/stock-valuation'),
+            axios.get('/api/analytics/top-products')
+        ]);
+        renderValuation(valRes.data.data);
+        renderTopProductsChart(prodRes.data.data);
+        renderTopProductsDetail(prodRes.data.data);
+        renderCategoryPie(valRes.data.data);
+    } catch (e) {
+        console.error('Report error:', e);
+        document.querySelectorAll('tbody').forEach(el => {
+            el.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3"><i class="bi bi-exclamation-circle me-1"></i>Failed to load data</td></tr>';
+        });
+    }
+}
+
+/* ── Valuation Table ── */
+function renderValuation(valData) {
+    if (!valData || !valData.by_category || valData.by_category.length === 0) {
+        document.getElementById('val-table').innerHTML =
+            '<tr><td colspan="4"><div class="empty-state"><i class="bi bi-inbox"></i>No valuation data available</div></td></tr>';
+        return;
+    }
+    const total = valData.total_value || 1;
+    const sortedCats = [...valData.by_category].sort((a, b) => (b.value || 0) - (a.value || 0));
+    document.getElementById('val-table').innerHTML = sortedCats.map((c, i) => {
+        const pct = total > 0 ? Math.round((c.value / total) * 100) : 0;
+        return `<tr class="val-row">
+            <td>
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${PALETTE[i % PALETTE.length]};"></div>
+                    ${c.category}
+                </div>
+            </td>
+            <td>${(c.quantity || 0).toLocaleString('en-IN')}</td>
+            <td>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="progress progress-thin flex-grow-1" style="background:#f1f5f9;">
+                        <div class="progress-bar" style="width:${pct}%;background:${PALETTE[i % PALETTE.length]};border-radius:4px;"></div>
+                    </div>
+                    <span style="font-size:0.75rem;color:#64748b;min-width:30px;">${pct}%</span>
+                </div>
+            </td>
+            <td class="text-end fw-semibold">₹${(c.value || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+        </tr>`;
+    }).join('');
+    const totalFmt = `₹${(valData.total_value || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('val-total').innerText = totalFmt;
+    document.getElementById('header-total-val').innerHTML = `<i class="bi bi-currency-rupee"></i>Stock Value: ${totalFmt}`;
+}
+
+/* ── Top Products Bar Chart ── */
+function renderTopProductsChart(data) {
+    if (!data || data.length === 0) return;
+    new Chart(document.getElementById('topProductsChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: data.map(p => p.name.length > 14 ? p.name.substring(0,14)+'…' : p.name),
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: data.map(p => p.revenue),
+                backgroundColor: PALETTE.slice(0, data.length),
+                borderRadius: 10,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+/* ── Top Products Detail List ── */
+function renderTopProductsDetail(data) {
+    const el = document.getElementById('topProductsDetail');
+    if (!data || data.length === 0) {
+        el.innerHTML = '<div class="empty-state"><i class="bi bi-inbox"></i>No product revenue data</div>';
+        return;
+    }
+    const maxRev = Math.max(...data.map(p => p.revenue), 1);
+    el.innerHTML = data.map((p, i) => `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="background:${PALETTE[i]};color:white;width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;">${i+1}</span>
+                    <span style="font-size:0.88rem;font-weight:600;color:#1e293b;">${p.name}</span>
+                </div>
+                <span style="font-size:0.88rem;font-weight:700;color:${PALETTE[i]};">₹${(p.revenue||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</span>
+            </div>
+            <div class="progress progress-thin" style="background:#f1f5f9;">
+                <div class="progress-bar" style="width:${Math.round((p.revenue/maxRev)*100)}%;background:${PALETTE[i]};border-radius:4px;transition:width 0.8s ease;"></div>
+            </div>
+        </div>`).join('');
+}
+
+
+/* ── Category Donut Chart ── */
+function renderCategoryPie(valData) {
+    if (!valData || !valData.by_category || valData.by_category.length === 0) return;
+    new Chart(document.getElementById('categoryPieChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: valData.by_category.map(c => c.category),
+            datasets: [{
+                data: valData.by_category.map(c => c.value),
+                backgroundColor: PALETTE.slice(0, valData.by_category.length),
+                borderWidth: 3,
+                borderColor: '#fff',
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ₹${(ctx.raw||0).toLocaleString('en-IN',{minimumFractionDigits:2})}`
+                    }
+                }
+            },
+            cutout: '60%'
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,663 @@
+{% extends 'public_base.html' %}
+{% block title %}Sign In - InventoHub{% endblock %}
+
+{% block styles %}
+<style>
+    .login-page {
+        min-height: calc(100vh - 86px);
+        display: flex;
+        align-items: stretch;
+    }
+
+    /* Left decorative panel */
+    .login-deco {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 40%, #172554 70%, #0c4a6e 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 60px;
+    }
+    .login-deco-shape {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.1;
+        pointer-events: none;
+    }
+    .login-deco-shape-1 { width: 500px; height: 500px; background: #4f46e5; top: -150px; left: -100px; animation: ldFloat 15s ease-in-out infinite alternate; }
+    .login-deco-shape-2 { width: 400px; height: 400px; background: #06b6d4; bottom: -100px; right: -80px; animation: ldFloat 15s ease-in-out infinite alternate-reverse; }
+    .login-deco-shape-3 { width: 200px; height: 200px; background: #8b5cf6; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg); border-radius: 30px; animation: ldFloat 20s ease-in-out infinite alternate; }
+
+    @keyframes ldFloat {
+        0% { transform: translate(0, 0) scale(1); }
+        100% { transform: translate(30px, -40px) scale(1.08); }
+    }
+
+    .login-deco-content {
+        position: relative;
+        z-index: 2;
+        max-width: 460px;
+    }
+    .login-deco-content .deco-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 18px;
+        border-radius: 100px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.8);
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 28px;
+        backdrop-filter: blur(8px);
+    }
+    .login-deco-content .deco-badge .dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: #34d399; animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .login-deco-content h2 {
+        color: #fff;
+        font-size: 2.4rem;
+        font-weight: 800;
+        line-height: 1.15;
+        margin-bottom: 18px;
+        letter-spacing: -0.5px;
+    }
+    .login-deco-content p {
+        color: rgba(255,255,255,0.55);
+        font-size: 1rem;
+        line-height: 1.8;
+        margin-bottom: 40px;
+    }
+
+    .deco-features { display: flex; flex-direction: column; gap: 20px; }
+    .deco-feature {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: rgba(255,255,255,0.7);
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+    .deco-feature-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(255,255,255,0.8);
+        font-size: 1.1rem;
+        flex-shrink: 0;
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* Right form panel */
+    .login-form-panel {
+        flex: 1;
+        display: flex;
+    
+        justify-content: center;
+        padding: 48px;
+        background: var(--bg);
+        position: relative;
+    }
+    .login-form-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1px;
+        height: 100%;
+        background: linear-gradient(to bottom, transparent, var(--border), transparent);
+    }
+
+    .login-form-container {
+        width: 100%;
+        max-width: 420px;
+    }
+
+    .login-form-container .brand-mini {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 40px;
+        text-decoration: none;
+    }
+    .brand-mini-icon {
+        background: linear-gradient(135deg, #4f46e5, #06b6d4);
+        width: 40px; height: 40px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 15px rgba(79,70,229,0.3);
+    }
+    .brand-mini-icon i { color: #fff; font-size: 1.1rem; }
+    .brand-mini-text { font-size: 1.2rem; font-weight: 800; color: #0f172a; }
+    .brand-mini-text span {
+        background: linear-gradient(135deg, #4f46e5, #06b6d4);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .login-form-container h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: #0f172a;
+    }
+    .login-form-container .login-subtitle {
+        color: #64748b;
+        font-size: 0.95rem;
+        margin-bottom: 32px;
+    }
+    .login-form-container .login-subtitle a {
+        color: #4f46e5;
+        text-decoration: none;
+        font-weight: 700;
+    }
+    .login-form-container .login-subtitle a:hover { text-decoration: underline; }
+
+    .form-group {
+        margin-bottom: 20px;
+        position: relative;
+    }
+    .input-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 1rem;
+        z-index: 1;
+    }
+    .form-input {
+        width: 100%;
+        padding: 12px 16px 12px 42px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        font-size: 0.9rem;
+        color: #0f172a;
+        background: #ffffff;
+        transition: all 0.2s ease;
+        outline: none;
+    }
+    .form-input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 4px rgba(79,70,229,0.1);
+    }
+    .form-input::placeholder {
+        color: #94a3b8;
+    }
+
+    .form-options {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        font-size: 0.88rem;
+    }
+    .form-check-input {
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+        cursor: pointer;
+    }
+    .form-check-input:checked {
+        background-color: #4f46e5;
+        border-color: #4f46e5;
+    }
+    .form-check-label {
+        color: #475569;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .forgot-link {
+        color: #4f46e5;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s;
+        cursor: pointer;
+    }
+    .forgot-link:hover { color: #4338ca; }
+
+    .login-btn {
+        width: 100%;
+        padding: 14px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #4f46e5, #06b6d4);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 4px 15px rgba(79,70,229,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+    .login-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15));
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .login-btn:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 12px 35px rgba(79,70,229,0.4);
+    }
+    .login-btn:hover::before { opacity: 1; }
+    .login-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+    .divider {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: 28px 0;
+        color: #94a3b8;
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .divider::before, .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e2e8f0;
+    }
+
+    .social-login-btns { display: flex; gap: 12px; }
+    .social-login-btn {
+        flex: 1;
+        padding: 12px;
+        border-radius: 14px;
+        border: 1.5px solid #e2e8f0;
+        background: #ffffff;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-family: inherit;
+    }
+    .social-login-btn:hover {
+        border-color: #4f46e5;
+        background: rgba(79,70,229,0.05);
+        color: #4f46e5;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .social-login-btn i { font-size: 1.15rem; }
+
+    /* Error message */
+    .form-error {
+        display: none;
+        padding: 12px 16px;
+        border-radius: 14px;
+        background: #fef2f2;
+        border: 1px solid rgba(239,68,68,0.15);
+        color: #dc2626;
+        font-size: 0.88rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+        align-items: center;
+        gap: 8px;
+    }
+    .form-error.show { display: flex; }
+
+    /* Forgot Password Section */
+    .forgot-section {
+        display: none;
+    }
+    .forgot-section.show {
+        display: block;
+    }
+    .back-to-login {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #4f46e5;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 24px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .back-to-login:hover {
+        gap: 10px;
+        color: #4338ca;
+    }
+
+    /* Spin animation */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
+
+    @media (max-width: 992px) {
+        .login-deco { display: none; }
+        .login-form-panel { padding: 60px 24px; }
+        .login-form-panel::before { display: none; }
+        .mobile-nav-arrows { display: flex !important; }
+    }
+    .mobile-nav-arrows {
+        display: none;
+        position: fixed;
+        bottom: 30px;
+        left: 30px;
+        z-index: 999;
+        align-items: center;
+        gap: 10px;
+    }
+    .mobile-nav-arrows button {
+        width: 46px; height: 46px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #4f46e5, #06b6d4);
+        color: #fff;
+        font-size: 1.1rem;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(79,70,229,0.35);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .mobile-nav-arrows button:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(79,70,229,0.45); }
+    .mobile-nav-arrows button:disabled { opacity: 0.35; cursor: default; transform: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="login-page">
+    <!-- Left Decorative Panel -->
+    <div class="login-deco">
+        <div class="login-deco-shape login-deco-shape-1"></div>
+        <div class="login-deco-shape login-deco-shape-2"></div>
+        <div class="login-deco-shape login-deco-shape-3"></div>
+        <div class="login-deco-content">
+            <div class="deco-badge">
+                <span class="dot"></span>
+                Trusted by 12,500+ businesses
+            </div>
+            <h2>Manage Your Entire Supply Chain From One Dashboard</h2>
+            <p>Real-time visibility, data-driven insights, and seamless automation — everything you need to run smarter operations.</p>
+            <div class="deco-features">
+                <div class="deco-feature">
+                    <div class="deco-feature-icon"><i class="bi bi-broadcast"></i></div>
+                    Real-time tracking across all warehouses
+                </div>
+                <div class="deco-feature">
+                    <div class="deco-feature-icon"><i class="bi bi-cpu"></i></div>
+                    Demand insights & inventory management
+                </div>
+                <div class="deco-feature">
+                    <div class="deco-feature-icon"><i class="bi bi-shield-check"></i></div>
+                    Enterprise-grade security & compliance
+                </div>
+                <div class="deco-feature">
+                    <div class="deco-feature-icon"><i class="bi bi-plug"></i></div>
+                    50+ native integrations out of the box
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile back/forward arrows (fixed bottom-left, mobile only) -->
+    <div class="mobile-nav-arrows">
+        <button onclick="history.back()" title="Go back"><i class="bi bi-arrow-left"></i></button>
+        <button onclick="history.forward()" title="Go forward"><i class="bi bi-arrow-right"></i></button>
+    </div>
+
+    <!-- Right Form Panel -->
+    <div class="login-form-panel">
+        <div class="login-form-container">
+            <a href="/" class="brand-mini">
+                <div class="brand-mini-icon"><i class="bi bi-box-seam"></i></div>
+                <div class="brand-mini-text">Invento<span>Hub</span></div>
+            </a>
+
+            <!-- Login Section -->
+            <div id="loginSection">
+                <h1>Welcome back</h1>
+                <p class="login-subtitle">Don't have an account? <a href="/contact">Contact us</a></p>
+
+                <div class="form-error" id="formError">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <span id="formErrorText"></span>
+                </div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <i class="bi bi-person input-icon"></i>
+                        <input type="text" class="form-input" placeholder="Username" id="loginUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <i class="bi bi-lock input-icon"></i>
+                        <input type="password" class="form-input" placeholder="Password" id="loginPassword" required>
+                        <button type="button" id="togglePassword" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; color:#94a3b8; cursor:pointer; font-size:1.1rem; padding:4px; transition:color 0.2s;">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+
+                    <div class="form-options">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="rememberMe">
+                            <label class="form-check-label" for="rememberMe">Remember me</label>
+                        </div>
+                        <a class="forgot-link" onclick="showForgot()">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="login-btn" id="loginBtn">
+                        Sign In <i class="bi bi-arrow-right"></i>
+                    </button>
+                </form>
+
+               
+                
+            </div>
+
+            <!-- Forgot Password Section -->
+            <div id="forgotSection" class="forgot-section">
+                <a class="back-to-login" onclick="showLogin()">
+                    <i class="bi bi-arrow-left"></i> Back to Login
+                </a>
+                
+                <h1>Reset Password</h1>
+                <p class="login-subtitle">Enter your email address and we'll send you a temporary password.</p>
+
+                <div class="form-error" id="forgotError" style="display:none;">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <span id="forgotErrorText"></span>
+                </div>
+                <div class="form-success" id="forgotSuccess" style="display:none; padding:12px 16px; border-radius:14px; background:#d1fae5; color:#065f46; margin-bottom:20px;">
+                    <i class="bi bi-check-circle"></i>
+                    <span id="forgotSuccessText"></span>
+                </div>
+
+                <div class="form-group">
+                    <i class="bi bi-envelope input-icon"></i>
+                    <input type="email" class="form-input" placeholder="Email address" id="forgotEmail" required>
+                </div>
+
+                <button type="button" class="login-btn" id="forgotBtn" onclick="sendForgotPassword()">
+                    Send Recovery Email <i class="bi bi-envelope"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Clear any existing tokens on login page
+localStorage.clear();
+
+// Toggle password visibility
+const toggleBtn = document.getElementById('togglePassword');
+const passwordInput = document.getElementById('loginPassword');
+if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        toggleBtn.querySelector('i').className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+}
+
+// Show error helper
+function showError(msg) {
+    const el = document.getElementById('formError');
+    document.getElementById('formErrorText').textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+function showForgotError(msg) {
+    const el = document.getElementById('forgotError');
+    document.getElementById('forgotErrorText').textContent = msg;
+    el.style.display = 'flex';
+    setTimeout(() => el.style.display = 'none', 5000);
+}
+
+function showForgotSuccess(msg) {
+    const el = document.getElementById('forgotSuccess');
+    document.getElementById('forgotSuccessText').textContent = msg;
+    el.style.display = 'flex';
+    setTimeout(() => el.style.display = 'none', 5000);
+}
+
+// Hide error on input
+document.querySelectorAll('#loginUsername, #loginPassword').forEach(input => {
+    if (input) {
+        input.addEventListener('input', () => {
+            document.getElementById('formError').classList.remove('show');
+        });
+    }
+});
+
+// Switch between login and forgot sections
+function showForgot() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('forgotSection').classList.add('show');
+    document.getElementById('forgotError').style.display = 'none';
+    document.getElementById('forgotSuccess').style.display = 'none';
+}
+
+function showLogin() {
+    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('forgotSection').classList.remove('show');
+    document.getElementById('formError').classList.remove('show');
+}
+
+// Login form submit
+document.getElementById('loginForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginBtn');
+    const origHTML = btn.innerHTML;
+
+    if (!username || !password) {
+        showError('Please enter both username and password.');
+        return;
+    }
+
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Signing in...';
+    btn.disabled = true;
+
+    try {
+        const response = await axios.post('/api/auth/login', { 
+            username: username, 
+            password: password 
+        });
+        
+        if (response.data.success) {
+            const { access_token, user } = response.data.data;
+            localStorage.setItem('access_token', access_token);
+            localStorage.setItem('user_role', user.role);
+            localStorage.setItem('username', user.username);
+            sessionStorage.removeItem('sidebarScrollTop');
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> Success! Redirecting...';
+            
+            setTimeout(() => {
+                window.location.href = user.redirect;
+            }, 500);
+        } else {
+            showError(response.data.message || 'Invalid credentials. Please try again.');
+            btn.innerHTML = origHTML;
+            btn.disabled = false;
+        }
+    } catch (err) {
+        const msg = err.response?.data?.message || 'Something went wrong. Please try again.';
+        showError(msg);
+        btn.innerHTML = origHTML;
+        btn.disabled = false;
+    }
+});
+
+// Forgot password handler
+async function sendForgotPassword() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('forgotBtn');
+    const origHTML = btn.innerHTML;
+    
+    if (!email) {
+        showForgotError('Please enter your email address.');
+        return;
+    }
+    
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Sending...';
+    btn.disabled = true;
+    
+    try {
+        const response = await axios.post('/api/auth/forgot-password', { email: email });
+        
+        if (response.data.success) {
+            showForgotSuccess(response.data.message);
+            document.getElementById('forgotEmail').value = '';
+            
+            setTimeout(() => {
+                showLogin();
+            }, 3000);
+        } else {
+            showForgotError(response.data.message || 'Failed to send recovery email.');
+        }
+    } catch (err) {
+        const msg = err.response?.data?.message || 'Something went wrong. Please try again.';
+        showForgotError(msg);
+    }
+    
+    btn.innerHTML = origHTML;
+    btn.disabled = false;
+}
+
+// Allow Enter key to submit login
+document.getElementById('loginUsername')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+    }
+});
+document.getElementById('loginPassword')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+    }
+});
+</script>
+{% endblock %}

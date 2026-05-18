@@ -1,0 +1,2176 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* ── Design tokens ─────────────────────────────────────────────────── */
+:root {
+  --sp-navy:   #0f172a;
+  --sp-slate:  #1e293b;
+  --sp-green:  #064e3b;
+  --sp-indigo: #4f46e5;
+  --sp-indigo-hover: #4338ca;
+  --sp-emerald: #10b981;
+  --sp-amber:  #f59e0b;
+  --sp-red:    #ef4444;
+  --sp-muted:  #94a3b8;
+  --sp-border: #f1f5f9;
+  --sp-bg:     #f8fafc;
+  --sp-card-shadow: 0 2px 12px rgba(0,0,0,.05);
+  --sp-card-shadow-hover: 0 8px 28px rgba(0,0,0,.10);
+  --sp-radius: 16px;
+}
+
+/* ── KPI Cards ─────────────────────────────────────────────────────── */
+.kpi-card {
+  border-radius: var(--sp-radius);
+  padding: 20px 22px;
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  box-shadow: var(--sp-card-shadow);
+  transition: transform .2s, box-shadow .2s;
+  display: flex; align-items: center; gap: 18px;
+}
+.kpi-card:hover { transform: translateY(-3px); box-shadow: var(--sp-card-shadow-hover); }
+.kpi-icon { width: 52px; height: 52px; border-radius: 14px; display: flex;
+            align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; }
+.kpi-body  { flex: 1; min-width: 0; }
+.kpi-label { font-size: .71rem; font-weight: 700; text-transform: uppercase;
+             letter-spacing: .9px; color: var(--sp-muted); margin-bottom: 4px; }
+.kpi-val   { font-size: 1.7rem; font-weight: 800; color: var(--sp-navy); line-height: 1; }
+.kpi-sub   { font-size: .71rem; color: var(--sp-muted); margin-top: 4px; }
+
+/* ── Page header ────────────────────────────────────────────────────── */
+.sp-header {
+  background: linear-gradient(135deg, var(--sp-navy) 0%, var(--sp-slate) 55%, var(--sp-green) 100%);
+  border-radius: 20px; padding: 28px 32px; color: white; margin-bottom: 28px;
+}
+.sp-header h4 { font-weight: 800; margin: 0; letter-spacing: -.3px; }
+.sp-header p  { margin: 4px 0 0; opacity: .72; font-size: .88rem; }
+
+/* ── Cards ──────────────────────────────────────────────────────────── */
+.sp-card {
+  border-radius: var(--sp-radius);
+  border: 1px solid var(--sp-border);
+  box-shadow: var(--sp-card-shadow);
+  background: #fff;
+}
+.sp-card .card-header {
+  background: transparent; border-bottom: 1px solid var(--sp-border);
+  padding: 16px 20px 13px;
+}
+.sp-card .card-header h6 { font-weight: 700; font-size: .88rem; margin: 0; color: var(--sp-navy); }
+
+/* ── Alert banner (for sync / errors) ───────────────────────────────── */
+.sp-alert { border-radius: 12px; padding: 12px 18px; font-size: .85rem;
+            font-weight: 600; display: none; }
+.sp-alert.show { display: flex; align-items: center; gap: 10px; }
+.sp-alert-warn { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.sp-alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+/* ── Tab navigation ─────────────────────────────────────────────────── */
+.sp-tabs { display: flex; gap: 4px; background: var(--sp-bg);
+           border-radius: 12px; padding: 4px; margin-bottom: 24px; }
+.sp-tab { border: none; background: transparent; border-radius: 9px; padding: 8px 18px;
+          font-size: .84rem; font-weight: 600; color: var(--sp-muted); cursor: pointer;
+          transition: all .15s; }
+.sp-tab:hover { color: var(--sp-navy); background: white; }
+.sp-tab.active { background: white; color: var(--sp-indigo);
+                 box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.sp-tab-pane { display: none; }
+.sp-tab-pane.active { display: block; }
+
+/* ── Filter bar ─────────────────────────────────────────────────────── */
+.filter-bar {
+  background: #fff; border-radius: 14px; border: 1px solid var(--sp-border);
+  padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+.filter-bar .form-control, .filter-bar .form-select {
+  border-radius: 12px; font-size: .875rem; border-color: #e2e8f0; height: 42px;
+}
+.filter-bar .form-control:focus, .filter-bar .form-select:focus {
+  box-shadow: 0 0 0 3px rgba(79,70,229,.12); border-color: var(--sp-indigo);
+}
+
+/* ── Table ──────────────────────────────────────────────────────────── */
+.sp-table thead th {
+  font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+  color: #64748b; border-bottom: 2px solid var(--sp-border); white-space: nowrap;
+  padding: 11px 14px; background: var(--sp-bg); cursor: pointer; user-select: none;
+}
+.sp-table thead th:hover { background: #f1f5f9; }
+.sp-table thead th .sort-icon { opacity: .35; margin-left: 4px; font-size: .7rem; }
+.sp-table thead th.sorted .sort-icon { opacity: 1; color: var(--sp-indigo); }
+.sp-table tbody td {
+  font-size: .875rem; padding: 11px 14px; vertical-align: middle;
+  border-bottom: 1px solid #f8fafc;
+}
+.sp-table tbody tr:hover { background: #f8faff; }
+.sp-table tbody tr.row-critical { border-left: 3px solid var(--sp-red); }
+.sp-table tbody tr.row-exceeded { border-left: 3px solid var(--sp-emerald); }
+
+/* ── Performance badges ──────────────────────────────────────────────── */
+.perf-badge {
+  font-size: .71rem; font-weight: 700; padding: 3px 10px;
+  border-radius: 20px; white-space: nowrap;
+}
+.perf-Exceeded     { background: #d1fae5; color: #065f46; }
+.perf-On-Track     { background: #dbeafe; color: #1e40af; }
+.perf-Below-Target { background: #fef3c7; color: #92400e; }
+.perf-Critical     { background: #fee2e2; color: #991b1b; }
+.perf-No-Forecast  { background: #f1f5f9; color: #64748b; }
+
+/* ── Adj arrow ───────────────────────────────────────────────────────── */
+.adj-up   { color: #10b981; font-weight: 700; }
+.adj-down { color: #ef4444; font-weight: 700; }
+.adj-flat { color: var(--sp-muted); }
+
+/* ── Variance bar (inline mini bar) ─────────────────────────────────── */
+.var-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.var-bar { height: 5px; border-radius: 3px; flex-shrink: 0; width: 40px; background: #f1f5f9; overflow: hidden; }
+.var-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.btn-sp-primary {
+  background: var(--sp-indigo); color: white; border: none;
+  border-radius: 10px; font-size: .875rem; font-weight: 600; padding: 9px 20px;
+  transition: background .15s;
+}
+.btn-sp-primary:hover { background: var(--sp-indigo-hover); color: white; }
+.btn-sp-outline {
+  background: transparent; color: white; border: 1.5px solid rgba(255,255,255,.4);
+  border-radius: 10px; font-size: .84rem; font-weight: 600; padding: 7px 16px;
+  transition: all .15s;
+}
+.btn-sp-outline:hover { background: rgba(255,255,255,.15); }
+.btn-icon {
+  border: none; background: transparent; padding: 5px 8px;
+  border-radius: 7px; font-size: .85rem; cursor: pointer; transition: all .15s;
+}
+.btn-icon:hover     { background: #f1f5f9; }
+.btn-icon.del:hover { background: #fee2e2; color: #dc2626; }
+.btn-icon.edit:hover { background: #eff6ff; color: #2563eb; }
+.btn-filter {
+  background: var(--sp-indigo); color: #fff; border: none; border-radius: 12px;
+  font-size: .875rem; font-weight: 600; padding: 0 24px; cursor: pointer;
+  height: 42px; display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn-filter:hover { background: var(--sp-indigo-hover); }
+
+/* ── Pagination ──────────────────────────────────────────────────────── */
+.pag-wrap {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px; border-top: 1px solid var(--sp-border);
+  font-size: .82rem; color: #64748b; flex-wrap: wrap; gap: 8px;
+}
+.page-btn {
+  border: 1px solid #e2e8f0; background: #fff; border-radius: 7px;
+  padding: 4px 11px; cursor: pointer; font-size: .82rem; font-weight: 600;
+  color: #475569; transition: all .15s;
+}
+.page-btn:hover, .page-btn.active { background: var(--sp-indigo); color: white; border-color: var(--sp-indigo); }
+.page-btn:disabled { opacity: .4; cursor: default; }
+
+/* ── Modal ────────────────────────────────────────────────────────────── */
+.modal-header-sp {
+  background: linear-gradient(135deg, #1e293b, #064e3b);
+  color: white; border-radius: 16px 16px 0 0; padding: 20px 24px;
+}
+.modal-content { border-radius: var(--sp-radius); border: none; box-shadow: 0 24px 56px rgba(0,0,0,.16); }
+
+/* ── Month picker helper ─────────────────────────────────────────────── */
+.month-suggestion { display: inline-block; background: var(--sp-bg); border: 1px solid #e2e8f0;
+  border-radius: 7px; font-size: .75rem; font-weight: 600; padding: 3px 10px;
+  cursor: pointer; color: #475569; margin: 2px; transition: all .15s; }
+.month-suggestion:hover { background: var(--sp-indigo); color: white; border-color: var(--sp-indigo); }
+
+/* ── Heatmap ─────────────────────────────────────────────────────────── */
+.heatmap-cell {
+  width: 72px; height: 40px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .74rem; font-weight: 700; cursor: default;
+  transition: transform .1s;
+}
+.heatmap-cell:hover { transform: scale(1.1); z-index: 1; position: relative; }
+
+/* ── Stockout risk badge ─────────────────────────────────────────────── */
+.risk-high   { background: #fee2e2; color: #991b1b; }
+.risk-medium { background: #fef3c7; color: #92400e; }
+.risk-bar { height: 6px; border-radius: 3px; background: #f1f5f9; overflow: hidden; }
+.risk-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f59e0b, #ef4444); }
+
+/* ── Accuracy table ──────────────────────────────────────────────────── */
+.acc-good  { color: #16a34a; font-weight: 700; }
+.acc-warn  { color: #d97706; font-weight: 700; }
+.acc-bad   { color: #dc2626; font-weight: 700; }
+
+/* ── Chart container ─────────────────────────────────────────────────── */
+.chart-box { position: relative; height: 260px; }
+
+/* ── Adjustment preset buttons ──────────────────────────────── */
+.adj-preset {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: .75rem; font-weight: 700; cursor: pointer;
+  border: 1.5px solid transparent; transition: all .15s;
+}
+.adj-preset:hover { transform: scale(1.08); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.adj-preset.selected { border-color: #0f172a !important; box-shadow: 0 0 0 2px #0f172a33; }
+
+/* ── Empty / loading state ───────────────────────────────────────────── */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--sp-muted); }
+.empty-state i { font-size: 2.8rem; margin-bottom: 12px; display: block; }
+.loading-pulse { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+
+/* ── Skeleton rows ───────────────────────────────────────────────────── */
+.skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+</style>
+
+<!-- ── Page Header ────────────────────────────────────────────────────────── -->
+<div class="sp-header d-flex align-items-center justify-content-between flex-wrap gap-3">
+  <div>
+    <h4><i class="bi bi-calendar3-range me-2"></i>Monthly Seasonal Planning</h4>
+    <p>Forecast vs actual · Seasonal adjustments · Category performance · Stockout intelligence</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap align-items-center">
+    <!-- BUG FIX: was class="admin-or-manager" hidden — class had no JS handler;
+         correct pattern is role-gated visibility via JS on DOMContentLoaded -->
+    <button class="btn-sp-outline role-mgr-admin" id="btnSync" onclick="autoSyncActuals()">
+      <i class="bi bi-arrow-repeat me-1"></i>Sync Actuals
+    </button>
+    <button class="btn-sp-outline role-mgr-admin" id="btnForecast" onclick="autoGenerateForecast()">
+      <i class="bi bi-graph-up-arrow me-1"></i>Generate Forecast
+    </button>
+    <button class="btn-sp-primary role-mgr-admin" onclick="openCreateModal()">
+      <i class="bi bi-plus-lg me-1"></i>New Plan
+    </button>
+  </div>
+</div>
+
+<!-- ── Stale-data banner (shown when actuals haven't been synced recently) ── -->
+<div class="sp-alert sp-alert-warn mb-3" id="staleAlert">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <span id="staleMsg">Some plans may have stale actuals. Consider running Sync Actuals.</span>
+  <button class="btn btn-sm btn-warning ms-auto fw-600" onclick="autoSyncActuals()">Sync Now</button>
+</div>
+
+<!-- ── KPI Row ──────────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4" id="kpiRow">
+  <div class="col-6 col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#eff6ff;">
+        <i class="bi bi-calendar-check" style="color:#2563eb;"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-label">Total Plans</div>
+        <div class="kpi-val loading-pulse" id="kpiTotal">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#f0fdf4;">
+        <i class="bi bi-graph-up-arrow" style="color:#16a34a;"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-label">Total Actual</div>
+        <div class="kpi-val loading-pulse" id="kpiTotalActual">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fdf4ff;">
+        <i class="bi bi-sliders" style="color:#9333ea;"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-label">Avg Adj %</div>
+        <div class="kpi-val loading-pulse" id="kpiAvgAdj">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#f0fdf4;">
+        <i class="bi bi-trophy" style="color:#16a34a;"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-label">Exceeded</div>
+        <div class="kpi-val loading-pulse" id="kpiExceeded">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fff7ed;">
+        <i class="bi bi-exclamation-triangle" style="color:#ea580c;"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-label">Critical</div>
+        <div class="kpi-val loading-pulse" id="kpiCritical">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#ecfdf5;">
+        <i class="bi bi-cash" style="color:#059669;"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-label">Total Forecast</div>
+        <div class="kpi-val loading-pulse" id="kpiTotalForecast">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tab Bar ────────────────────────────────────────────────────────────── -->
+<div class="sp-tabs">
+  <button class="sp-tab active" onclick="switchTab('overview')"><i class="bi bi-bar-chart-line me-1"></i>Overview</button>
+  <button class="sp-tab" onclick="switchTab('plans')"><i class="bi bi-list-ul me-1"></i>Plans Table</button>
+  <button class="sp-tab" onclick="switchTab('heatmap')"><i class="bi bi-table me-1"></i>Heatmap</button>
+  <button class="sp-tab" onclick="switchTab('stockout')"><i class="bi bi-exclamation-octagon me-1"></i>Stockout Risk</button>
+  <button class="sp-tab" onclick="switchTab('accuracy')"><i class="bi bi-bullseye me-1"></i>Accuracy</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB: OVERVIEW (charts)
+════════════════════════════════════════════════════════════════ -->
+<div class="sp-tab-pane active" id="tab-overview">
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-8">
+      <div class="sp-card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h6><i class="bi bi-bar-chart-line me-2 text-indigo-600"></i>Monthly Forecast vs Actual</h6>
+          <div class="d-flex gap-2">
+            <select class="form-select form-select-sm w-auto" id="trendCategoryFilter" onchange="loadCharts()">
+              <option value="">All Categories</option>
+            </select>
+            <select class="form-select form-select-sm w-auto" id="trendChartType" onchange="buildTrendChartFromCache()">
+              <option value="bar">Bar</option>
+              <option value="line">Line</option>
+            </select>
+          </div>
+        </div>
+        <div class="p-3"><div class="chart-box"><canvas id="trendChart"></canvas></div></div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-4">
+      <div class="sp-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6><i class="bi bi-pie-chart me-2"></i>Adjustment Distribution</h6>
+        </div>
+        <div class="p-3"><div class="chart-box"><canvas id="adjChart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-7">
+      <div class="sp-card">
+        <div class="card-header">
+          <h6><i class="bi bi-grid-3x3-gap me-2"></i>Category Performance</h6>
+        </div>
+        <div class="p-3"><div class="chart-box"><canvas id="catChart"></canvas></div></div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-5">
+      <div class="sp-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6><i class="bi bi-building me-2"></i>Top Sites by Actual Sales</h6>
+        </div>
+        <div class="p-3"><div class="chart-box"><canvas id="siteChart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB: PLANS TABLE
+════════════════════════════════════════════════════════════════ -->
+<div class="sp-tab-pane" id="tab-plans">
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-3">
+        <input type="text" id="searchInput" class="form-control"
+               placeholder="Search site, category, month…">
+      </div>
+      <div class="col-6 col-md-2">
+        <select class="form-select" id="filterMonth">
+          <option value="">All Months</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select class="form-select" id="filterCategory">
+          <option value="">All Categories</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select class="form-select" id="filterPerformance">
+          <option value="">All Performance</option>
+          <option>Exceeded</option>
+          <option>On Track</option>
+          <option>Below Target</option>
+          <option>Critical</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-1 d-flex align-items-end">
+        <button class="btn-filter w-100" onclick="applyFilters()">
+          <i class="bi bi-funnel"></i>Filter
+        </button>
+      </div>
+    </div>
+    <!-- Active filter pills -->
+    <div id="filterPills" class="mt-2 d-flex flex-wrap gap-1"></div>
+  </div>
+
+  <!-- Table card -->
+  <div class="sp-card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h6><i class="bi bi-list-ul me-2"></i>Seasonal Plans</h6>
+      <div class="d-flex gap-2 align-items-center">
+        <span id="tableCount" class="text-muted" style="font-size:.82rem;"></span>
+        <a href="/api/seasonal/export/csv" class="btn btn-outline-secondary btn-sm fw-600">
+          <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+        <button class="btn btn-outline-secondary btn-sm fw-600 role-mgr-admin"
+                onclick="openBulkImport()">
+          <i class="bi bi-upload me-1"></i>Import CSV
+        </button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table sp-table mb-0">
+        <thead>
+          <tr>
+            <th onclick="sortBy('month')">Month <span class="sort-icon">⇅</span></th>
+            <th>Site</th>
+            <th onclick="sortBy('product_category')">Category <span class="sort-icon">⇅</span></th>
+            <th class="text-center" onclick="sortBy('performance')">Performance <span class="sort-icon">⇅</span></th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="9"><div class="empty-state loading-pulse">
+            <i class="bi bi-hourglass-split"></i><p>Loading plans…</p>
+          </div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pag-wrap" id="pagination"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB: HEATMAP
+════════════════════════════════════════════════════════════════ -->
+<div class="sp-tab-pane" id="tab-heatmap">
+  <div class="sp-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h6 class="mb-0"><i class="bi bi-table me-2 text-orange-500"></i>Variance Heatmap — Month × Category</h6>
+      <div class="d-flex align-items-center gap-3" style="font-size:.76rem; color:#64748b;">
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;vertical-align:middle;"></span> &lt;−10%</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fef3c7;vertical-align:middle;"></span> −10 to 0%</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#d1fae5;vertical-align:middle;"></span> 0–10%</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#bfdbfe;vertical-align:middle;"></span> &gt;10%</span>
+      </div>
+    </div>
+    <div class="p-3" style="overflow-x:auto;">
+      <div id="heatmapContainer">
+        <div class="empty-state loading-pulse"><i class="bi bi-grid"></i><p>Loading heatmap…</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB: STOCKOUT RISK
+════════════════════════════════════════════════════════════════ -->
+<div class="sp-tab-pane" id="tab-stockout">
+  <div class="sp-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h6 class="mb-0"><i class="bi bi-exclamation-octagon me-2 text-danger"></i>Stockout Risk Analysis</h6>
+        <small class="text-muted">Plans where actual sales exceeded forecast by &gt;25% — indicating under-stocking</small>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <label class="small text-muted me-1">Threshold:</label>
+        <select class="form-select form-select-sm w-auto" id="stockoutThreshold" onchange="loadStockoutRisk()">
+          <option value="1.15">+15%</option>
+          <option value="1.25" selected>+25%</option>
+          <option value="1.35">+35%</option>
+          <option value="1.50">+50%</option>
+        </select>
+        <button class="btn btn-sm btn-outline-danger" onclick="loadStockoutRisk()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+      </div>
+    </div>
+    <div class="p-0" id="stockoutContent">
+      <div class="empty-state loading-pulse"><i class="bi bi-hourglass-split"></i><p>Analysing…</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB: FORECAST ACCURACY
+════════════════════════════════════════════════════════════════ -->
+<div class="sp-tab-pane" id="tab-accuracy">
+  <div class="sp-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div>
+        <h6 class="mb-0"><i class="bi bi-bullseye me-2 text-success"></i>Forecast Accuracy by Category</h6>
+        <small class="text-muted">MAE · MAPE · RMSE — computed over plans with both forecast and actuals</small>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadAccuracy()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+      </button>
+    </div>
+    <div class="table-responsive" id="accuracyContent">
+      <div class="empty-state loading-pulse"><i class="bi bi-hourglass-split"></i><p>Computing…</p></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL: Create / Edit Plan
+════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="planModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header-sp d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-bold" id="modalTitle">New Seasonal Plan</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="hidden" id="editId">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-600 small">Month <span class="text-danger">*</span></label>
+            <!-- BUG FIX: was free-text only — added quick-pick buttons + validation hint -->
+            <input type="text" id="fMonth" class="form-control" placeholder="e.g. Jan-2025"
+                   oninput="validateMonthInput(this); autoFetchActualSales()">
+            <div class="form-text text-danger d-none" id="fMonthErr">Format: Mon-YYYY (e.g. Mar-2025)</div>
+            <div class="mt-1" id="monthSuggestions"></div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-600 small">Site <span class="text-danger">*</span></label>
+            <select id="fSite" class="form-select" onchange="suggestForecast(); autoFetchActualSales()">
+              <option value="">Select site…</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-600 small">Category <span class="text-danger">*</span></label>
+            <select id="fCategory" class="form-select" onchange="suggestForecast(); autoFetchActualSales()">
+              <option value="">Select category…</option>
+              <!-- Populated from /api/seasonal/meta valid_categories — never hardcoded -->
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-600 small">Forecasted Sales (₹) <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="number" id="fForecasted" class="form-control" placeholder="0.00" min="0" step="0.01"
+                     oninput="updatePreview()">
+              <button class="btn btn-outline-secondary btn-sm px-2" type="button"
+                      id="btnSuggestForecast" onclick="suggestForecast()" title="Auto-suggest from history"
+                      style="border-radius:0 8px 8px 0; font-size:.8rem;">
+                <i class="bi bi-magic"></i>
+              </button>
+            </div>
+            <!-- Suggestion strip shown after site+category selected -->
+            <div id="forecastSuggestion" class="mt-1" style="display:none;">
+              <div class="p-2 rounded-2" style="background:#eff6ff;border:1px solid #bfdbfe;font-size:.78rem;">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
+                  <div>
+                    <span class="fw-700 text-primary" id="suggestedVal">—</span>
+                    <span class="text-muted ms-1">suggested</span>
+                    <div class="text-muted mt-1" id="suggestedBasis" style="font-size:.72rem;"></div>
+                  </div>
+                  <button class="btn btn-sm py-0 px-2 fw-600"
+                          style="background:#2563eb;color:white;border-radius:6px;font-size:.75rem;"
+                          onclick="applyForecastSuggestion()">
+                    Use this ↵
+                  </button>
+                </div>
+                <!-- Last 3 months mini table -->
+                <div id="historyMini" class="mt-2" style="font-size:.72rem;color:#475569;"></div>
+              </div>
+            </div>
+            <div id="forecastNoHistory" class="mt-1 form-text text-warning" style="display:none;">
+              <i class="bi bi-info-circle me-1"></i>No history found for this site + category. Enter manually.
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-600 small">Actual Sales (₹)
+              <span class="text-muted fw-400" style="font-size:.7rem;">— leave 0 for future months</span>
+              <span id="actualAutobadge" class="ms-1 d-none"
+                    style="font-size:.65rem;font-weight:700;background:#d1fae5;color:#065f46;
+                           border-radius:4px;padding:1px 6px;">AUTO</span>
+            </label>
+            <div class="input-group">
+              <input type="number" id="fActual" class="form-control" placeholder="0.00" min="0" step="0.01"
+                     oninput="updatePreview()">
+              <button class="btn btn-outline-secondary btn-sm px-2" type="button"
+                      id="btnFetchActual" onclick="autoFetchActualSales(true)"
+                      title="Fetch actual sales from sales orders"
+                      style="border-radius:0 8px 8px 0; font-size:.8rem;">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+            </div>
+            <div id="actualFetchStatus" class="form-text" style="font-size:.72rem;">
+              Only fill once the month has passed and real sales are known.
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-600 small">Seasonal Adjustment (%)</label>
+            <div class="input-group">
+              <input type="number" id="fAdjPct" class="form-control" placeholder="0"
+                     step="0.1" oninput="updatePreview(); syncAdjPresets(this.value)">
+              <span class="input-group-text">%</span>
+            </div>
+            <!-- Quick-pick preset buttons -->
+            <div class="mt-2 d-flex flex-wrap gap-1" id="adjPresets">
+              <span class="adj-preset" data-val="-20" style="background:#fee2e2;color:#991b1b;">-20%</span>
+              <span class="adj-preset" data-val="-10" style="background:#fef3c7;color:#92400e;">-10%</span>
+              <span class="adj-preset" data-val="-5"  style="background:#fef9c3;color:#a16207;">-5%</span>
+              <span class="adj-preset" data-val="0"   style="background:#f1f5f9;color:#475569;">0%</span>
+              <span class="adj-preset" data-val="5"   style="background:#dcfce7;color:#166534;">+5%</span>
+              <span class="adj-preset" data-val="10"  style="background:#d1fae5;color:#065f46;">+10%</span>
+              <span class="adj-preset" data-val="15"  style="background:#a7f3d0;color:#064e3b;">+15%</span>
+              <span class="adj-preset" data-val="20"  style="background:#6ee7b7;color:#064e3b;">+20%</span>
+            </div>
+            <div class="form-text mt-1">
+              <strong>+%</strong> = demand boost (festival/peak season) &nbsp;|&nbsp;
+              <strong>-%</strong> = demand dip (off-season). Click a preset or type manually.
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-600 small">Notes</label>
+            <!-- BUG FIX: notes field was rendered but silently dropped on save -->
+            <textarea id="fNotes" class="form-control" rows="2"
+                      placeholder="e.g. Diwali season boost expected…"></textarea>
+          </div>
+        </div>
+        <!-- Live preview -->
+        <div class="mt-3 p-3 rounded-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+          <div class="d-flex gap-4 flex-wrap" style="font-size:.83rem;">
+            <div><span class="text-muted">Variance:</span> <strong id="prevVariance">—</strong></div>
+            <div><span class="text-muted">Gap:</span> <strong id="prevGap">—</strong></div>
+            <div><span class="text-muted">Performance:</span> <strong id="prevPerf">—</strong></div>
+            <div><span class="text-muted">Adj Fraction:</span> <code id="prevAdjFrac">0</code></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-sp-primary" onclick="savePlan()">
+          <i class="bi bi-check-lg me-1"></i>Save Plan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Confirm Modal ──────────────────────────────────────────── -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-body p-4 text-center">
+        <div class="mb-3" style="font-size:2rem; color:#dc2626;"><i class="bi bi-trash3"></i></div>
+        <h6 class="fw-bold mb-1">Delete Seasonal Plan?</h6>
+        <p class="text-muted small mb-3">This action cannot be undone.</p>
+        <input type="hidden" id="deleteId">
+        <div class="d-flex gap-2 justify-content-center">
+          <button class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDelete()">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Copy Month Modal ──────────────────────────────────────────────── -->
+<div class="modal fade" id="copyMonthModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content">
+      <div class="modal-header-sp d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-copy me-2"></i>Copy Month Plans</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="text-muted small mb-3">
+          Copy all plans from a source month to a target month. Only forecasted sales and
+          adjustments are copied — actuals start at 0.
+        </p>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-600 small">Source Month <span class="text-danger">*</span></label>
+            <select id="copySource" class="form-select">
+              <option value="">Select…</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600 small">Target Month <span class="text-danger">*</span></label>
+            <input type="text" id="copyTarget" class="form-control" placeholder="e.g. Jun-2025">
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="copyOverwrite">
+              <label class="form-check-label small" for="copyOverwrite">
+                Overwrite existing plans in target month
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-sp-primary" onclick="executeCopyMonth()">
+          <i class="bi bi-copy me-1"></i>Copy Plans
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bulk Import Modal ──────────────────────────────────────────────── -->
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content">
+      <div class="modal-header-sp d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-upload me-2"></i>Bulk Import CSV</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="text-muted small mb-1">Expected columns:</p>
+        <code class="d-block small mb-3">Month, Site ID, Product Category, Forecasted Sales, Actual Sales, Seasonal Adjustments, Notes</code>
+        <p class="text-muted small mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Existing records are <strong>updated</strong> (upsert). New records are created.
+          Seasonal Adjustments should be a decimal fraction (0.12 = +12%).
+        </p>
+        <input type="file" id="importFile" class="form-control" accept=".csv">
+        <div id="importResult" class="mt-3"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-sp-primary" onclick="runBulkImport()">
+          <i class="bi bi-upload me-1"></i>Import
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════════════ */
+let currentPage = 1;
+const PER_PAGE = 25;
+let charts = {};
+let debounceTimer;
+let metaCache = null;
+let sortField = 'month';
+let sortDir = 'asc';
+let analyticsCache = null;
+let activeTab = 'overview';
+
+// BUG FIX: thresholds now come from API /meta so JS and backend are always in sync
+let PERF_THRESHOLDS = { exceeded: 1.10, on_track: 0.95, below: 0.80 };
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  applyRoleVisibility();
+  await loadMeta();
+  await Promise.all([loadKPIs(), loadCharts(), loadHeatmap(), loadTable()]);
+  // Lazy-load insight tabs when first visited
+});
+
+/* ─── Role visibility ───────────────────────────────────────── */
+function applyRoleVisibility() {
+  // BUG FIX: original used CSS class "admin-or-manager" with `hidden` attribute
+  // but no JS ever removed the hidden attribute. Now centralized here.
+  const role = localStorage.getItem('user_role') || '';
+  const isMgrAdmin = ['Admin', 'Manager'].includes(role);
+  document.querySelectorAll('.role-mgr-admin').forEach(el => {
+    el.style.display = isMgrAdmin ? '' : 'none';
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAB SWITCHING
+════════════════════════════════════════════════════════════════ */
+function switchTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.sp-tab').forEach((t, i) => {
+    const tabs = ['overview','plans','heatmap','stockout','accuracy'];
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.sp-tab-pane').forEach(p =>
+    p.classList.toggle('active', p.id === 'tab-' + name));
+
+  // Lazy load insight tabs
+  if (name === 'stockout') loadStockoutRisk();
+  if (name === 'accuracy') loadAccuracy();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   META (filter dropdowns)
+════════════════════════════════════════════════════════════════ */
+async function loadMeta() {
+  try {
+    const { data } = await axios.get('/api/seasonal/meta');
+    metaCache = data.data;
+    // Sync thresholds from backend
+    if (metaCache.thresholds) PERF_THRESHOLDS = metaCache.thresholds;
+
+    // Month dropdowns — existing months only
+    ['filterMonth', 'copySource'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      metaCache.months.forEach(m => sel.add(new Option(m, m)));
+    });
+
+    // Filter category — existing DB categories only (what's actually in data)
+    const catSel = document.getElementById('filterCategory');
+    const trendCat = document.getElementById('trendCategoryFilter');
+    metaCache.categories.forEach(c => {
+      catSel.add(new Option(c, c));
+      trendCat.add(new Option(c, c));
+    });
+
+    // Form category — ALWAYS use valid_categories (all 9 master categories defined in backend)
+    // metaCache.categories = only categories existing in DB (could be just 4)
+    // metaCache.valid_categories = complete master list regardless of DB state
+    const fCat = document.getElementById('fCategory');
+    fCat.innerHTML = '<option value="">Select category…</option>';
+    const masterCategories = (metaCache.valid_categories && metaCache.valid_categories.length)
+      ? metaCache.valid_categories
+      : ['Dairy','Apparel','Bakery','Electronics','Produce','Beverages','Household','Personal Care','Other'];
+    masterCategories.forEach(c => fCat.add(new Option(c, c)));
+
+    // Site dropdown (form only — filter bar no longer has site filter)
+    const fSite = document.getElementById('fSite');
+    metaCache.sites.forEach(s => {
+      fSite.add(new Option(`${s.name} (${s.id})`, s.id));
+    });
+  } catch(e) { console.error('loadMeta', e); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KPIs
+════════════════════════════════════════════════════════════════ */
+async function loadKPIs() {
+  try {
+    const { data } = await axios.get('/api/seasonal/kpi');
+    const d = data.data;
+    document.getElementById('kpiTotal').textContent = d.total_plans.toLocaleString();
+    document.getElementById('kpiTotalActual').textContent = fmtCrore(d.total_actual);
+    document.getElementById('kpiTotalForecast').textContent = fmtCrore(d.total_forecasted);
+    document.getElementById('kpiAvgAdj').textContent =
+      (d.avg_adj_pct >= 0 ? '+' : '') + d.avg_adj_pct.toFixed(1) + '%';
+    document.getElementById('kpiExceeded').textContent = d.exceeded_pct.toFixed(1) + '%';
+    document.getElementById('kpiCritical').textContent = d.critical_pct.toFixed(1) + '%';
+    // Remove loading pulse once data is in
+    document.querySelectorAll('.kpi-val.loading-pulse').forEach(el => el.classList.remove('loading-pulse'));
+  } catch(e) { console.error('loadKPIs', e); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHARTS
+════════════════════════════════════════════════════════════════ */
+async function loadCharts() {
+  try {
+    const cat = document.getElementById('trendCategoryFilter').value;
+    const url = '/api/seasonal/analytics' + (cat ? `?category=${encodeURIComponent(cat)}` : '');
+    const { data } = await axios.get(url);
+    analyticsCache = data.data;
+    buildTrendChartFromCache();
+    buildAdjChart(analyticsCache.adj_distribution);
+    buildCatChart(analyticsCache.category_perf);
+    buildSiteChart(analyticsCache.site_ranking);
+  } catch(e) { console.error('loadCharts', e); }
+}
+
+function buildTrendChartFromCache() {
+  if (!analyticsCache) return;
+  buildTrendChart(analyticsCache.monthly_trend);
+}
+
+function buildTrendChart(t) {
+  const ctx = document.getElementById('trendChart');
+  const type = document.getElementById('trendChartType')?.value || 'bar';
+  if (charts.trend) charts.trend.destroy();
+  charts.trend = new Chart(ctx, {
+    type: type,
+    data: {
+      labels: t.labels,
+      datasets: [
+        { label: 'Forecasted', data: t.forecasted,
+          backgroundColor: type === 'line' ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.25)',
+          borderColor: '#6366f1', borderWidth: 2, borderRadius: type === 'bar' ? 4 : 0,
+          fill: type === 'line', tension: 0.35, pointRadius: 3 },
+        { label: 'Actual', data: t.actual,
+          backgroundColor: type === 'line' ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.55)',
+          borderColor: '#10b981', borderWidth: 2, borderRadius: type === 'bar' ? 4 : 0,
+          fill: type === 'line', tension: 0.35, pointRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ₹${ctx.raw.toLocaleString()}`,
+            afterBody: (items) => {
+              const f = items[0]?.dataset?.data[items[0].dataIndex];
+              const a = items[1]?.dataset?.data[items[0].dataIndex];
+              if (f && a) {
+                const vp = ((a - f) / f * 100).toFixed(1);
+                return [`Variance: ${vp >= 0 ? '+' : ''}${vp}%`];
+              }
+              return [];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 40 } },
+        y: { ticks: { callback: v => '₹' + (v / 100000).toFixed(0) + 'L', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function buildAdjChart(bins) {
+  const ctx = document.getElementById('adjChart');
+  if (charts.adj) charts.adj.destroy();
+  charts.adj = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(bins),
+      datasets: [{ data: Object.values(bins),
+        backgroundColor: ['#fee2e2','#fef3c7','#d1fae5','#bfdbfe'],
+        borderColor: ['#fca5a5','#fcd34d','#6ee7b7','#93c5fd'],
+        borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} plans` } }
+      }
+    }
+  });
+}
+
+function buildCatChart(cats) {
+  const ctx = document.getElementById('catChart');
+  if (charts.cat) charts.cat.destroy();
+  charts.cat = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: cats.map(c => c.category),
+      datasets: [
+        { label: 'Forecasted', data: cats.map(c => c.forecasted),
+          backgroundColor: 'rgba(99,102,241,0.25)', borderColor: '#6366f1', borderWidth: 1.5, borderRadius: 4 },
+        { label: 'Actual', data: cats.map(c => c.actual),
+          backgroundColor: 'rgba(16,185,129,0.55)', borderColor: '#10b981', borderWidth: 1.5, borderRadius: 4 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ₹${ctx.raw.toLocaleString()}` } }
+      },
+      scales: {
+        x: { ticks: { callback: v => '₹' + (v/100000).toFixed(0) + 'L', font: { size: 10 } } },
+        y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function buildSiteChart(sites) {
+  const ctx = document.getElementById('siteChart');
+  if (charts.site) charts.site.destroy();
+  const colors = sites.map((_, i) => `hsl(${220 + i*15},70%,${60 - i*3}%)`);
+  charts.site = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sites.map(s => s.site_name.length > 14 ? s.site_name.slice(0,14)+'…' : s.site_name),
+      datasets: [{ data: sites.map(s => s.actual), backgroundColor: colors, borderRadius: 5 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: ctx => `Actual: ₹${ctx.raw.toLocaleString()}`,
+          afterLabel: (ctx) => {
+            const s = sites[ctx.dataIndex];
+            const vp = s.forecasted ? ((s.actual - s.forecasted) / s.forecasted * 100).toFixed(1) : '—';
+            return `Variance: ${vp}%`;
+          }
+        }}
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 35 } },
+        y: { ticks: { callback: v => '₹' + (v/100000).toFixed(0) + 'L', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEATMAP
+════════════════════════════════════════════════════════════════ */
+async function loadHeatmap() {
+  try {
+    const { data } = await axios.get('/api/seasonal/heatmap');
+    const d = data.data;
+    if (!d.months.length) {
+      document.getElementById('heatmapContainer').innerHTML =
+        '<div class="empty-state"><i class="bi bi-calendar-x"></i><p>No data yet.</p></div>';
+      return;
+    }
+    let html = '<div style="overflow-x:auto;"><table style="border-collapse:separate;border-spacing:4px;">';
+    html += '<tr><th style="min-width:100px;font-size:.72rem;color:#64748b;padding:4px 8px;"></th>';
+    d.categories.forEach(cat => {
+      html += `<th style="font-size:.69rem;color:#475569;font-weight:700;padding:4px 6px;text-align:center;min-width:72px;">${cat}</th>`;
+    });
+    html += '</tr>';
+    d.months.forEach(month => {
+      html += `<tr><td style="font-size:.75rem;font-weight:600;color:#334155;padding:4px 8px;white-space:nowrap;">${month}</td>`;
+      d.categories.forEach(cat => {
+        const vp = d.matrix[month]?.[cat];
+        if (vp === undefined) {
+          html += `<td><div class="heatmap-cell" style="background:#f1f5f9;color:#cbd5e1;">—</div></td>`;
+        } else {
+          const bg = vp < -10 ? '#fee2e2' : vp < 0 ? '#fef3c7' : vp <= 10 ? '#d1fae5' : '#bfdbfe';
+          const fc = vp < -10 ? '#991b1b' : vp < 0 ? '#92400e' : vp <= 10 ? '#065f46' : '#1e40af';
+          const sign = vp >= 0 ? '+' : '';
+          html += `<td><div class="heatmap-cell" style="background:${bg};color:${fc};"
+                        title="${month} · ${cat}: ${sign}${vp}%">${sign}${vp}%</div></td>`;
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</table></div>';
+    document.getElementById('heatmapContainer').innerHTML = html;
+  } catch(e) { console.error('loadHeatmap', e); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLE
+════════════════════════════════════════════════════════════════ */
+async function loadTable() {
+  const params = new URLSearchParams({
+    page: currentPage, per_page: PER_PAGE,
+    search: document.getElementById('searchInput')?.value || '',
+    month: document.getElementById('filterMonth')?.value || '',
+    category: document.getElementById('filterCategory')?.value || '',
+    performance: document.getElementById('filterPerformance')?.value || '',
+    sort: sortField, dir: sortDir,
+  });
+  try {
+    const { data } = await axios.get('/api/seasonal/?' + params);
+    renderTable(data.data);
+    renderPagination(data.pagination);
+    document.getElementById('tableCount').textContent =
+      `${data.pagination.total.toLocaleString()} records`;
+    renderFilterPills();
+  } catch(e) { console.error('loadTable', e); }
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById('tableBody');
+  const role = localStorage.getItem('user_role') || '';
+  const canEdit = ['Admin', 'Manager'].includes(role);
+  const isAdmin = role === 'Admin';
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5">
+      <div class="empty-state"><i class="bi bi-calendar-x"></i><p>No seasonal plans found.</p></div>
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const perfClass = 'perf-' + r.performance.replace(/\s+/g, '-');
+    const rowClass  = r.performance === 'Critical' ? 'row-critical' : r.performance === 'Exceeded' ? 'row-exceeded' : '';
+    const actionCol = `
+      <td class="text-center">
+        <button class="btn-icon" onclick="viewPlan(${r.id})" title="View" style="color:#6366f1;"><i class="bi bi-eye"></i></button>
+        ${canEdit ? `<button class="btn-icon edit" onclick="editPlan(${r.id})" title="Edit"><i class="bi bi-pencil"></i></button>` : ''}
+        ${isAdmin ? `<button class="btn-icon del" onclick="openDeleteModal(${r.id})" title="Delete"><i class="bi bi-trash3"></i></button>` : ''}
+      </td>`;
+
+    return `<tr class="${rowClass}">
+      <td><span class="fw-600">${r.month}</span></td>
+      <td>
+        <div class="fw-600" style="font-size:.83rem;">${r.site_name}</div>
+        <div style="font-size:.72rem;color:#94a3b8;">${r.site_id}</div>
+      </td>
+      <td>${r.product_category}</td>
+      <td class="text-center"><span class="perf-badge ${perfClass}">${r.performance}</span></td>
+      ${actionCol}
+    </tr>`;
+  }).join('');
+}
+
+function renderPagination(pg) {
+  const pag = document.getElementById('pagination');
+  const { page, pages, total, per_page } = pg;
+  const start = (page - 1) * per_page + 1;
+  const end   = Math.min(page * per_page, total);
+  let btns = `<span>Showing ${start}–${end} of ${total.toLocaleString()}</span><div class="d-flex gap-1">`;
+  btns += `<button class="page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>‹</button>`;
+  for (let p = Math.max(1, page-2); p <= Math.min(pages, page+2); p++) {
+    btns += `<button class="page-btn ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  }
+  btns += `<button class="page-btn" onclick="goPage(${page+1})" ${page>=pages?'disabled':''}>›</button></div>`;
+  pag.innerHTML = btns;
+}
+
+/* ─── Sorting ───────────────────────────────────────────────── */
+function sortBy(field) {
+  if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortField = field; sortDir = 'asc'; }
+  document.querySelectorAll('.sp-table thead th').forEach(th => {
+    th.classList.remove('sorted');
+    if (th.getAttribute('onclick') === `sortBy('${field}')`) th.classList.add('sorted');
+  });
+  currentPage = 1;
+  loadTable();
+}
+
+/* ─── Filter pills ──────────────────────────────────────────── */
+function renderFilterPills() {
+  const pills = document.getElementById('filterPills');
+  if (!pills) return;
+  const active = [];
+  const month = document.getElementById('filterMonth')?.value;
+  const cat   = document.getElementById('filterCategory')?.value;
+  const perf  = document.getElementById('filterPerformance')?.value;
+  const site  = '';
+  if (month) active.push({ label: `Month: ${month}`, clear: () => { document.getElementById('filterMonth').value=''; loadTable(); } });
+  if (cat)   active.push({ label: `Cat: ${cat}`, clear: () => { document.getElementById('filterCategory').value=''; loadTable(); } });
+  if (perf)  active.push({ label: `Perf: ${perf}`, clear: () => { document.getElementById('filterPerformance').value=''; loadTable(); } });
+  pills.innerHTML = active.map((p, i) =>
+    `<span style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;
+      padding:2px 10px;font-size:.75rem;font-weight:600;cursor:pointer;" onclick="filterPillClear(${i})">
+      ${p.label} ×</span>`
+  ).join('');
+  pills._pills = active;
+}
+function filterPillClear(i) { document.getElementById('filterPills')._pills[i].clear(); }
+
+function goPage(p) { currentPage = p; loadTable(); }
+function debounceLoad() { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => { currentPage=1; loadTable(); }, 350); }
+function applyFilters() { currentPage = 1; loadTable(); }
+
+function viewPlan(id) {
+  // Find plan from last loaded data
+  axios.get(`/api/seasonal/${id}`).then(res => {
+    const r = res.data.data || res.data;
+    const fmtInr  = v => v > 0 ? '₹' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:0}) : '—';
+    const adjSign = r.adj_pct > 0 ? '+' : '';
+    const varSign = r.variance_pct >= 0 ? '+' : '';
+    const varColor = r.variance_pct >= 0 ? '#16a34a' : '#dc2626';
+    const perfClass = 'perf-' + (r.performance||'').replace(/\s+/g,'-');
+
+    const html = `
+    <div class="modal fade" id="viewPlanModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+        <div class="modal-content" style="border-radius:16px;border:none;">
+          <div class="modal-header" style="background:linear-gradient(135deg,#1e293b,#064e3b);color:white;border-radius:16px 16px 0 0;">
+            <div>
+              <h5 class="mb-0 fw-bold"><i class="bi bi-eye me-2"></i>${r.month} — ${r.product_category}</h5>
+              <div style="font-size:.8rem;opacity:.8;">${r.site_name} (${r.site_id})</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="d-flex flex-column gap-3">
+              <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc;">
+                <span class="text-muted" style="font-size:.85rem;">Forecasted Sales</span>
+                <span class="fw-700" style="font-size:1.1rem;">${fmtInr(r.forecasted_sales)}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc;">
+                <span class="text-muted" style="font-size:.85rem;">Actual Sales</span>
+                <span class="fw-700" style="font-size:1.1rem;">${fmtInr(r.actual_sales)}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc;">
+                <span class="text-muted" style="font-size:.85rem;">Seasonal Adjustment</span>
+                <span class="fw-700">${adjSign}${(r.adj_pct||0).toFixed(1)}%</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc;">
+                <span class="text-muted" style="font-size:.85rem;">Variance</span>
+                <span class="fw-700" style="color:${varColor};">${r.actual_sales > 0 ? varSign + r.variance_pct + '%' : '—'}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc;">
+                <span class="text-muted" style="font-size:.85rem;">Performance</span>
+                <span class="perf-badge ${perfClass}">${r.performance}</span>
+              </div>
+              ${r.notes ? `<div class="p-3 rounded-3" style="background:#f8fafc;">
+                <div class="text-muted mb-1" style="font-size:.85rem;">Notes</div>
+                <div style="font-size:.9rem;">${r.notes}</div>
+              </div>` : ''}
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            <button class="btn btn-sm btn-primary role-mgr-admin" onclick="bootstrap.Modal.getInstance(document.getElementById('viewPlanModal')).hide(); editPlan(${r.id})">Edit</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    document.getElementById('viewPlanModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('viewPlanModal')).show();
+  }).catch(() => showToast('Could not load plan details', 'error'));
+}
+
+function resetFilters() {
+  ['filterMonth','filterCategory','filterPerformance'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('searchInput').value = '';
+  currentPage = 1;
+  loadTable();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STOCKOUT RISK TAB
+════════════════════════════════════════════════════════════════ */
+async function loadStockoutRisk() {
+  const threshold = document.getElementById('stockoutThreshold')?.value || 1.25;
+  const el = document.getElementById('stockoutContent');
+  el.innerHTML = '<div class="empty-state loading-pulse"><i class="bi bi-hourglass-split"></i><p>Analysing…</p></div>';
+  try {
+    const { data } = await axios.get(`/api/seasonal/stockout-risk?threshold=${threshold}`);
+    const items = data.data;
+    if (!items.length) {
+      el.innerHTML = `<div class="empty-state">
+        <i class="bi bi-check-circle text-success"></i>
+        <p>No stockout risk detected at ${data.threshold_pct}% threshold. 🎉</p>
+      </div>`;
+      return;
+    }
+    let html = `<div class="p-3 border-bottom text-muted small">
+      <strong>${items.length}</strong> plans exceeded forecast by &gt;${data.threshold_pct}% — possible stockout or demand surprise
+    </div>
+    <div class="table-responsive"><table class="table sp-table mb-0">
+      <thead><tr>
+        <th>Month</th><th>Site</th><th>Category</th>
+        <th class="text-end">Forecasted</th><th class="text-end">Actual</th>
+        <th class="text-end">Overrun</th><th class="text-end">Suggested Buffer</th>
+      </tr></thead><tbody>`;
+    items.forEach(r => {
+      const riskClass = r.overrun_pct > 50 ? 'risk-high' : 'risk-medium';
+      const barW = Math.min(r.overrun_pct, 100);
+      html += `<tr>
+        <td class="fw-600">${r.month}</td>
+        <td><div class="fw-600" style="font-size:.83rem;">${r.site_name}</div>
+            <div style="font-size:.72rem;color:#94a3b8;">${r.site_id}</div></td>
+        <td>${r.category}</td>
+        <td class="text-end">₹${r.forecasted.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+        <td class="text-end fw-700">₹${r.actual.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+        <td class="text-end">
+          <span class="perf-badge ${riskClass}">+${r.overrun_pct}%</span>
+          <div class="risk-bar mt-1" style="width:80px;margin-left:auto;">
+            <div class="risk-bar-fill" style="width:${barW}%;"></div>
+          </div>
+        </td>
+        <td class="text-end" style="color:#7c3aed;font-weight:700;">
+          ₹${r.suggested_increase.toLocaleString(undefined,{maximumFractionDigits:0})}
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state"><i class="bi bi-x-circle text-danger"></i><p>Failed to load.</p></div>';
+    console.error(e);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FORECAST ACCURACY TAB
+════════════════════════════════════════════════════════════════ */
+async function loadAccuracy() {
+  const el = document.getElementById('accuracyContent');
+  el.innerHTML = '<div class="empty-state loading-pulse"><i class="bi bi-hourglass-split"></i><p>Computing…</p></div>';
+  try {
+    const { data } = await axios.get('/api/seasonal/forecast-accuracy');
+    const items = data.data;
+    if (!items.length) {
+      el.innerHTML = '<div class="empty-state"><i class="bi bi-bar-chart"></i><p>Not enough data with actuals yet.</p></div>';
+      return;
+    }
+    const mapeClass = v => v < 10 ? 'acc-good' : v < 25 ? 'acc-warn' : 'acc-bad';
+    let html = `<table class="table sp-table mb-0">
+      <thead><tr>
+        <th>Category</th><th class="text-end">Plans (n)</th>
+        <th class="text-end">MAE (₹)</th>
+        <th class="text-end">MAPE (%)</th>
+        <th class="text-end">RMSE (₹)</th>
+        <th class="text-end">Bias (₹)</th>
+        <th>Assessment</th>
+      </tr></thead><tbody>`;
+    items.forEach(r => {
+      const mc = mapeClass(r.mape);
+      const biasLabel = r.bias > 0 ? '<span class="adj-down">Under-forecast</span>' : r.bias < 0 ? '<span class="adj-up">Over-forecast</span>' : '—';
+      html += `<tr>
+        <td class="fw-600">${r.category}</td>
+        <td class="text-end">${r.n}</td>
+        <td class="text-end">₹${r.mae.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+        <td class="text-end"><span class="${mc}">${r.mape.toFixed(1)}%</span></td>
+        <td class="text-end">₹${r.rmse.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+        <td class="text-end">${r.bias >= 0 ? '+' : ''}₹${r.bias.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+        <td>${biasLabel}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    html += `<div class="p-3 border-top" style="font-size:.76rem;color:#64748b;">
+      <strong>MAPE Guide:</strong>
+      <span class="acc-good">&#9679; &lt;10% Excellent</span> &nbsp;
+      <span class="acc-warn">&#9679; 10–25% Acceptable</span> &nbsp;
+      <span class="acc-bad">&#9679; &gt;25% Needs improvement</span> &nbsp;&nbsp;
+      <strong>Bias:</strong> positive = actual consistently higher than forecast (under-forecasting).
+    </div>`;
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state"><i class="bi bi-x-circle text-danger"></i><p>Failed to load.</p></div>';
+    console.error(e);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CREATE / EDIT MODAL
+════════════════════════════════════════════════════════════════ */
+function openCreateModal() {
+  _lastFetchKey = '';   // reset so fetch always runs fresh
+  document.getElementById('editId').value = '';
+  document.getElementById('modalTitle').textContent = 'New Seasonal Plan';
+  ['fMonth','fNotes'].forEach(id => document.getElementById(id).value = '');
+  ['fForecasted','fActual','fAdjPct'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fSite').value = '';
+  document.getElementById('fCategory').value = '';
+  // Reset suggestion strip
+  document.getElementById('forecastSuggestion').style.display = 'none';
+  document.getElementById('forecastNoHistory').style.display = 'none';
+  _suggestedForecastVal = null;
+  _suggestedAdjPct      = null;
+  // Reset actual auto-fetch state
+  document.getElementById('actualAutobadge').classList.add('d-none');
+  document.getElementById('actualFetchStatus').textContent = 'Only fill once the month has passed and real sales are known.';
+  document.getElementById('actualFetchStatus').style.color = '';
+  // Reset adj preset highlights
+  document.querySelectorAll('.adj-preset').forEach(el => el.classList.remove('selected'));
+  populateMonthSuggestions();
+  updatePreview();
+  new bootstrap.Modal(document.getElementById('planModal')).show();
+}
+
+async function editPlan(id) {
+  try {
+    const { data } = await axios.get(`/api/seasonal/${id}`);
+    const r = data.data;
+    document.getElementById('editId').value = r.id;
+    document.getElementById('modalTitle').textContent = 'Edit Seasonal Plan';
+    document.getElementById('fMonth').value = r.month;
+    document.getElementById('fSite').value = r.site_id;
+    document.getElementById('fCategory').value = r.product_category;
+    document.getElementById('fForecasted').value = r.forecasted_sales;
+    document.getElementById('fActual').value = r.actual_sales;
+    // BUG FIX: adj_pct is already ×100; show as percentage in input
+    document.getElementById('fAdjPct').value = r.adj_pct;
+    document.getElementById('fNotes').value = r.notes || '';
+    populateMonthSuggestions();
+    updatePreview();
+    new bootstrap.Modal(document.getElementById('planModal')).show();
+  } catch(e) { showToast('Failed to load plan', 'error'); }
+}
+
+async function savePlan() {
+  const id = document.getElementById('editId').value;
+  const adjPct = parseFloat(document.getElementById('fAdjPct').value) || 0;
+  const payload = {
+    month: document.getElementById('fMonth').value.trim(),
+    site_id: document.getElementById('fSite').value,
+    product_category: document.getElementById('fCategory').value,
+    forecasted_sales: parseFloat(document.getElementById('fForecasted').value) || 0,
+    actual_sales: parseFloat(document.getElementById('fActual').value) || 0,
+    // BUG FIX: input is in % → convert to fraction for API
+    seasonal_adjustments: parseFloat((adjPct / 100).toFixed(6)),
+    notes: document.getElementById('fNotes').value.trim(),
+  };
+  if (!payload.month || !payload.site_id || !payload.product_category || !payload.forecasted_sales) {
+    showToast('Fill in all required fields', 'error'); return;
+  }
+  if (!validateMonthFormat(payload.month)) {
+    showToast('Month must be format Mon-YYYY (e.g. Mar-2025)', 'error'); return;
+  }
+  try {
+    if (id) {
+      await axios.put(`/api/seasonal/${id}`, payload);
+      showToast('Plan updated ✓');
+    } else {
+      await axios.post('/api/seasonal/', payload);
+      showToast('Plan created ✓');
+    }
+    bootstrap.Modal.getInstance(document.getElementById('planModal')).hide();
+    loadTable(); loadKPIs(); loadCharts(); loadHeatmap();
+  } catch(e) {
+    const msg = e.response?.data?.message || 'Failed to save plan';
+    // BUG FIX: show existing_id if conflict
+    const existing = e.response?.data?.existing_id;
+    showToast(existing ? `${msg} (ID ${existing})` : msg, 'error');
+  }
+}
+
+/* ─── Month input validation + suggestions ────────────────── */
+const MONTH_RE = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{4}$/i;
+function validateMonthFormat(v) { return MONTH_RE.test(v); }
+function validateMonthInput(input) {
+  const ok = !input.value || validateMonthFormat(input.value);
+  document.getElementById('fMonthErr').classList.toggle('d-none', ok);
+}
+function populateMonthSuggestions() {
+  const el = document.getElementById('monthSuggestions');
+  if (!metaCache?.months) { el.innerHTML = ''; return; }
+  // Show last 3 + next 2 months from meta
+  const recent = metaCache.months.slice(-3);
+  el.innerHTML = recent.map(m =>
+    `<span class="month-suggestion" onclick="document.getElementById('fMonth').value='${m}';updatePreview();">${m}</span>`
+  ).join('');
+}
+
+/* ─── Adj preset buttons ────────────────────────────────────── */
+document.addEventListener('click', function(e) {
+  if (!e.target.classList.contains('adj-preset')) return;
+  const val = e.target.dataset.val;
+  document.getElementById('fAdjPct').value = val;
+  // Highlight selected preset
+  document.querySelectorAll('.adj-preset').forEach(el => el.classList.remove('selected'));
+  e.target.classList.add('selected');
+  updatePreview();
+});
+
+// Keep presets in sync when user types manually
+function syncAdjPresets(val) {
+  const num = parseFloat(val);
+  document.querySelectorAll('.adj-preset').forEach(el => {
+    el.classList.toggle('selected', parseFloat(el.dataset.val) === num);
+  });
+}
+
+/* ─── Live preview ──────────────────────────────────────────── */
+function updatePreview() {
+  const f = parseFloat(document.getElementById('fForecasted')?.value) || 0;
+  const a = parseFloat(document.getElementById('fActual')?.value) || 0;
+  const adjPct = parseFloat(document.getElementById('fAdjPct')?.value) || 0;
+  const adjFrac = (adjPct / 100).toFixed(4);
+
+  const vp = f ? ((a - f) / f * 100).toFixed(1) : '—';
+  const gap = (a - f).toFixed(0);
+
+  // BUG FIX: use synced thresholds from backend
+  let perf = '—';
+  if (f && a) {
+    const ratio = a / f;
+    if (ratio >= PERF_THRESHOLDS.exceeded) perf = 'Exceeded';
+    else if (ratio >= PERF_THRESHOLDS.on_track) perf = 'On Track';
+    else if (ratio >= PERF_THRESHOLDS.below) perf = 'Below Target';
+    else perf = 'Critical';
+  }
+
+  document.getElementById('prevVariance').textContent = vp === '—' ? '—' : (vp >= 0 ? '+' : '') + vp + '%';
+  document.getElementById('prevGap').textContent = gap === '0' || !f ? '—' : '₹' + parseInt(gap).toLocaleString();
+  document.getElementById('prevPerf').textContent = perf;
+  document.getElementById('prevAdjFrac').textContent = adjFrac;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DELETE
+════════════════════════════════════════════════════════════════ */
+function openDeleteModal(id) {
+  document.getElementById('deleteId').value = id;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+async function confirmDelete() {
+  const id = document.getElementById('deleteId').value;
+  try {
+    await axios.delete(`/api/seasonal/${id}`);
+    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+    showToast('Plan deleted');
+    loadTable(); loadKPIs(); loadCharts(); loadHeatmap();
+  } catch(e) { showToast('Failed to delete', 'error'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COPY MONTH
+════════════════════════════════════════════════════════════════ */
+function openCopyMonthModal() {
+  new bootstrap.Modal(document.getElementById('copyMonthModal')).show();
+}
+async function executeCopyMonth() {
+  const source = document.getElementById('copySource').value;
+  const target = document.getElementById('copyTarget').value.trim();
+  const overwrite = document.getElementById('copyOverwrite').checked;
+  if (!source || !target) { showToast('Select source and enter target month', 'error'); return; }
+  if (!validateMonthFormat(target)) { showToast('Target must be Mon-YYYY format', 'error'); return; }
+  try {
+    const { data } = await axios.post('/api/seasonal/copy-month', { source_month: source, target_month: target, overwrite });
+    bootstrap.Modal.getInstance(document.getElementById('copyMonthModal')).hide();
+    showToast(`✓ ${data.message}`);
+    loadTable(); loadKPIs(); loadCharts(); loadHeatmap();
+    // Refresh meta so new month appears in dropdowns
+    loadMeta();
+  } catch(e) { showToast(e.response?.data?.message || 'Copy failed', 'error'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BULK IMPORT
+════════════════════════════════════════════════════════════════ */
+function openBulkImport() { new bootstrap.Modal(document.getElementById('importModal')).show(); }
+async function runBulkImport() {
+  const file = document.getElementById('importFile').files[0];
+  if (!file) { showToast('Select a CSV file', 'error'); return; }
+  const form = new FormData();
+  form.append('file', file);
+  const resultEl = document.getElementById('importResult');
+  resultEl.innerHTML = '<div class="text-muted small loading-pulse">Uploading…</div>';
+  try {
+    const { data } = await axios.post('/api/seasonal/bulk-import', form,
+      { headers: { 'Content-Type': 'multipart/form-data' } });
+    resultEl.innerHTML = `
+      <div class="alert alert-success py-2 small mb-1">
+        ✓ <strong>${data.created}</strong> created, <strong>${data.updated}</strong> updated
+      </div>
+      ${data.errors.length ? `<div class="alert alert-warning py-2 small">
+        ${data.errors.length} error(s):<br>${data.errors.slice(0,5).map(e => `• ${e}`).join('<br>')}
+        ${data.errors.length > 5 ? `<br>… and ${data.errors.length - 5} more` : ''}
+      </div>` : ''}`;
+    loadTable(); loadKPIs(); loadCharts(); loadHeatmap();
+  } catch(e) {
+    resultEl.innerHTML = `<div class="alert alert-danger py-2 small">Import failed: ${e.response?.data?.message || e.message}</div>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTO SYNC / FORECAST
+════════════════════════════════════════════════════════════════ */
+/* ─── Auto-fetch actual sales for past months ───────────────── */
+const MONTHS_ORDER_JS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function _monthToDate(monthStr) {
+  // 'Jan-2025' → Date(2025, 0, 1)
+  try {
+    const [mon, yr] = monthStr.split('-');
+    const idx = MONTHS_ORDER_JS.findIndex(m => m.toLowerCase() === mon.toLowerCase());
+    if (idx === -1 || !yr) return null;
+    return new Date(parseInt(yr), idx, 1);
+  } catch { return null; }
+}
+
+function _isMonthInPast(monthStr) {
+  const d = _monthToDate(monthStr);
+  if (!d) return false;
+  const now = new Date();
+  // Past = before the current month's start
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  return d < startOfThisMonth;
+}
+
+async function autoFetchActualSales(manual = false) {
+  const month    = document.getElementById('fMonth').value.trim();
+  const siteId   = document.getElementById('fSite').value;
+  const category = document.getElementById('fCategory').value;
+  const statusEl = document.getElementById('actualFetchStatus');
+  const badgeEl  = document.getElementById('actualAutobadge');
+
+  // Only act when all three fields are filled and month format is valid
+  if (!month || !siteId || !category) return;
+  if (!validateMonthFormat(month)) return;
+
+  // Only auto-fill for past months (unless manually triggered)
+  if (!_isMonthInPast(month) && !manual) {
+    statusEl.textContent = 'Only fill once the month has passed and real sales are known.';
+    statusEl.style.color = '';
+    badgeEl.classList.add('d-none');
+    return;
+  }
+
+  // Show loading state
+  statusEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem;"></span> Fetching from sales orders…';
+  statusEl.style.color = '#2563eb';
+
+  try {
+    // Query the plans list filtered by month + site + category
+    // to get sales data pulled from sales orders via auto-sync logic
+    const { data } = await axios.get('/api/seasonal/actual-for-month', {
+      params: { month, site_id: siteId, category }
+    });
+
+    if (data.success && data.actual_sales !== null && data.actual_sales !== undefined) {
+      const val = parseFloat(data.actual_sales);
+      document.getElementById('fActual').value = val.toFixed(2);
+      updatePreview();
+      badgeEl.classList.remove('d-none');
+      statusEl.innerHTML = `✓ Auto-fetched from ${data.order_count || 'sales'} order(s) for ${month}.`;
+      statusEl.style.color = '#065f46';
+    } else {
+      statusEl.innerHTML = 'No sales orders found for this month/site/category.';
+      statusEl.style.color = '#92400e';
+      badgeEl.classList.add('d-none');
+    }
+  } catch(e) {
+    // Fallback: silently reset status — don't block user
+    statusEl.textContent = 'Could not auto-fetch. Enter manually.';
+    statusEl.style.color = '#92400e';
+    badgeEl.classList.add('d-none');
+  }
+}
+
+async function autoSyncActuals() {
+  const btn = document.getElementById('btnSync');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Syncing…';
+  try {
+    const [syncRes, previewRes] = await Promise.all([
+      axios.post('/api/seasonal/auto-sync'),
+      axios.get('/api/seasonal/sync-preview')
+    ]);
+    const d  = syncRes.data;
+    const pv = previewRes.data;
+    showSyncDiagnosis(d, pv);
+    loadTable(); loadKPIs(); loadCharts(); loadHeatmap();
+    document.getElementById('staleAlert').classList.remove('show');
+  } catch(e) {
+    showToast('Sync failed: ' + (e.response?.data?.message || e.message), 'error');
+  } finally { btn.disabled = false; btn.innerHTML = orig; }
+}
+
+function showSyncDiagnosis(syncData, preview) {
+  const s = preview.summary || {};
+  const matched  = preview.matched  || [];
+  const noPlan   = preview.no_plan  || [];
+  const noSales  = preview.no_sales || [];
+
+  const rowsHtml = (rows, cols) => rows.length === 0
+    ? `<tr><td colspan="${cols}" class="text-center text-muted py-3" style="font-size:.8rem;">None</td></tr>`
+    : rows.map(r => `
+        <tr style="font-size:.8rem;">
+          <td>${r.month}</td>
+          <td>${r.site_name} <span class="text-muted">(${r.site_id})</span></td>
+          <td>${r.category}</td>
+          ${cols === 4 ? `<td class="text-end fw-600 text-success">₹${(r.sales_total||0).toLocaleString(undefined,{maximumFractionDigits:0})}</td>` : ''}
+          ${cols === 5 ? `<td class="text-end fw-600 text-success">₹${(r.sales_total||0).toLocaleString(undefined,{maximumFractionDigits:0})}</td><td class="text-end text-muted">₹${(r.current_actual||0).toLocaleString(undefined,{maximumFractionDigits:0})}</td>` : ''}
+          ${cols === 'noSales' ? `<td class="text-end text-muted">₹${(r.current_actual||0).toLocaleString(undefined,{maximumFractionDigits:0})}</td>` : ''}
+        </tr>`).join('');
+
+  const theadMatched  = `<tr><th>Month</th><th>Site</th><th>Category</th><th class="text-end">Sales Total</th><th class="text-end">Prev Actual</th></tr>`;
+  const theadNoPlan   = `<tr><th>Month</th><th>Site</th><th>Category</th><th class="text-end">Sales Total</th></tr>`;
+  const theadNoSales  = `<tr><th>Month</th><th>Site</th><th>Category</th><th class="text-end">Current Actual</th></tr>`;
+
+  const html = `
+  <div class="modal fade" id="syncDiagModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content" style="border-radius:16px;border:none;">
+        <div class="modal-header" style="background:linear-gradient(135deg,#1e293b,#064e3b);color:white;border-radius:16px 16px 0 0;">
+          <h5 class="mb-0 fw-bold"><i class="bi bi-clipboard-data me-2"></i>Sync Diagnosis</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+
+          <!-- Summary badges -->
+          <div class="d-flex gap-3 mb-4 flex-wrap">
+            <div class="px-4 py-3 rounded-3 text-center" style="background:#d1fae5;min-width:130px;">
+              <div style="font-size:1.6rem;font-weight:800;color:#065f46;">${s.will_sync}</div>
+              <div style="font-size:.75rem;font-weight:700;color:#065f46;">✓ Synced</div>
+            </div>
+            <div class="px-4 py-3 rounded-3 text-center" style="background:#fef3c7;min-width:130px;">
+              <div style="font-size:1.6rem;font-weight:800;color:#92400e;">${s.no_plan_skipped}</div>
+              <div style="font-size:.75rem;font-weight:700;color:#92400e;">⚠ Sales but no Plan</div>
+            </div>
+            <div class="px-4 py-3 rounded-3 text-center" style="background:#f1f5f9;min-width:130px;">
+              <div style="font-size:1.6rem;font-weight:800;color:#475569;">${s.no_sales_orders}</div>
+              <div style="font-size:.75rem;font-weight:700;color:#475569;">○ Plans with no Sales</div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <ul class="nav nav-tabs mb-3" id="diagTabs">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#diagMatched">
+              <span class="badge bg-success me-1">${matched.length}</span> Synced Plans
+            </button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#diagNoPlan">
+              <span class="badge bg-warning text-dark me-1">${noPlan.length}</span> Sales but No Plan
+            </button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#diagNoSales">
+              <span class="badge bg-secondary me-1">${noSales.length}</span> Plans with No Sales
+            </button></li>
+          </ul>
+
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="diagMatched">
+              <p class="text-muted small mb-2">These plans were updated with actual sales from sales orders.</p>
+              <div class="table-responsive" style="max-height:380px;overflow-y:auto;">
+                <table class="table table-sm table-hover sp-table mb-0">
+                  <thead class="sticky-top">${theadMatched}</thead>
+                  <tbody>${rowsHtml(matched, 5)}</tbody>
+                </table>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="diagNoPlan">
+              <p class="text-muted small mb-2">Sales orders exist for these combinations but <strong>no Seasonal Plan was created</strong> — create a plan for each to include them in future syncs.</p>
+              <div class="table-responsive" style="max-height:380px;overflow-y:auto;">
+                <table class="table table-sm table-hover sp-table mb-0">
+                  <thead class="sticky-top">${theadNoPlan}</thead>
+                  <tbody>${rowsHtml(noPlan, 4)}</tbody>
+                </table>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="diagNoSales">
+              <p class="text-muted small mb-2">These plans exist but have <strong>no matching Delivered/Confirmed sales orders</strong> — the month may be future, or orders are in a different status.</p>
+              <div class="table-responsive" style="max-height:380px;overflow-y:auto;">
+                <table class="table table-sm table-hover sp-table mb-0">
+                  <thead class="sticky-top">${theadNoSales}</thead>
+                  <tbody>${rowsHtml(noSales, 'noSales')}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // Remove any previous instance
+  document.getElementById('syncDiagModal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  new bootstrap.Modal(document.getElementById('syncDiagModal')).show();
+}
+
+async function autoGenerateForecast() {
+  const btn = document.getElementById('btnForecast');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
+  try {
+    const { data } = await axios.post('/api/seasonal/auto-forecast');
+    showForecastDiagnosis(data);
+    loadTable(); loadKPIs(); loadCharts(); loadHeatmap();
+  } catch(e) {
+    showToast('Forecast failed: ' + (e.response?.data?.message || e.message), 'error');
+  } finally { btn.disabled = false; btn.innerHTML = orig; }
+}
+
+function showForecastDiagnosis(d) {
+  const updated  = d.updated_records || [];
+  const created  = d.created_records || [];
+  const skipped  = d.skipped_records || [];
+
+  const fmtInr = v => '₹' + Number(v||0).toLocaleString('en-IN', {maximumFractionDigits:0});
+  const adjBadge = pct => {
+    const cls = pct > 0 ? 'bg-success' : pct < 0 ? 'bg-danger' : 'bg-secondary';
+    return `<span class="badge ${cls}">${pct > 0 ? '+' : ''}${pct}%</span>`;
+  };
+  const changeArrow = (oldV, newV) => {
+    if (oldV == null) return '';
+    const diff = newV - oldV;
+    const pct  = oldV > 0 ? ((diff / oldV) * 100).toFixed(1) : '—';
+    const cls  = diff >= 0 ? 'text-success' : 'text-danger';
+    const arr  = diff >= 0 ? '▲' : '▼';
+    return `<span class="${cls}" style="font-size:.75rem;">${arr} ${pct}%</span>`;
+  };
+  const recentStr = (arr) => arr.map(r =>
+    `<span class="text-muted" style="font-size:.72rem;">${r.month}: ${fmtInr(r.actual)}</span>`
+  ).join(' · ');
+
+  const updatedRows = updated.length === 0
+    ? `<tr><td colspan="6" class="text-center text-muted py-3" style="font-size:.8rem;">None</td></tr>`
+    : updated.map(r => `<tr style="font-size:.8rem;">
+        <td>${r.site_name} <span class="text-muted">(${r.site_id})</span></td>
+        <td>${r.category}</td>
+        <td class="text-end">${fmtInr(r.old_forecast)}</td>
+        <td class="text-end fw-600">${fmtInr(r.new_forecast)} ${changeArrow(r.old_forecast, r.new_forecast)}</td>
+        <td class="text-center">${adjBadge(r.adj_pct)}</td>
+        <td>${recentStr(r.recent_actuals)}</td>
+      </tr>`).join('');
+
+  const createdRows = created.length === 0
+    ? `<tr><td colspan="5" class="text-center text-muted py-3" style="font-size:.8rem;">None</td></tr>`
+    : created.map(r => `<tr style="font-size:.8rem;">
+        <td>${r.site_name} <span class="text-muted">(${r.site_id})</span></td>
+        <td>${r.category}</td>
+        <td class="text-end fw-600 text-success">${fmtInr(r.new_forecast)}</td>
+        <td class="text-center">${adjBadge(r.adj_pct)}</td>
+        <td>${recentStr(r.recent_actuals)}</td>
+      </tr>`).join('');
+
+  const skippedRows = skipped.length === 0
+    ? `<tr><td colspan="4" class="text-center text-muted py-3" style="font-size:.8rem;">None</td></tr>`
+    : skipped.map(r => `<tr style="font-size:.8rem;">
+        <td>${r.site_name} <span class="text-muted">(${r.site_id})</span></td>
+        <td>${r.category}</td>
+        <td><span class="badge bg-warning text-dark">Skipped</span></td>
+        <td class="text-muted">${r.reason}</td>
+      </tr>`).join('');
+
+  const html = `
+  <div class="modal fade" id="forecastDiagModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content" style="border-radius:16px;border:none;">
+        <div class="modal-header" style="background:linear-gradient(135deg,#1e293b,#1e3a5f);color:white;border-radius:16px 16px 0 0;">
+          <div>
+            <h5 class="mb-0 fw-bold"><i class="bi bi-graph-up-arrow me-2"></i>Generate Forecast — ${d.month}</h5>
+            <div style="font-size:.8rem;opacity:.8;margin-top:2px;">${d.message}</div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+
+          <!-- Summary badges -->
+          <div class="d-flex gap-3 mb-4 flex-wrap">
+            <div class="px-4 py-3 rounded-3 text-center" style="background:#dbeafe;min-width:120px;">
+              <div style="font-size:1.6rem;font-weight:800;color:#1e40af;">${d.updated}</div>
+              <div style="font-size:.75rem;font-weight:700;color:#1e40af;">↻ Updated</div>
+            </div>
+            <div class="px-4 py-3 rounded-3 text-center" style="background:#d1fae5;min-width:120px;">
+              <div style="font-size:1.6rem;font-weight:800;color:#065f46;">${d.created}</div>
+              <div style="font-size:.75rem;font-weight:700;color:#065f46;">✦ Created</div>
+            </div>
+            <div class="px-4 py-3 rounded-3 text-center" style="background:#fef3c7;min-width:120px;">
+              <div style="font-size:1.6rem;font-weight:800;color:#92400e;">${d.skipped}</div>
+              <div style="font-size:.75rem;font-weight:700;color:#92400e;">⚠ Skipped</div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <ul class="nav nav-tabs mb-3">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#fcUpdated">
+              <span class="badge bg-primary me-1">${updated.length}</span> Updated
+            </button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#fcCreated">
+              <span class="badge bg-success me-1">${created.length}</span> Newly Created
+            </button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#fcSkipped">
+              <span class="badge bg-warning text-dark me-1">${skipped.length}</span> Skipped
+            </button></li>
+          </ul>
+
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="fcUpdated">
+              <p class="text-muted small mb-2">Existing plans whose forecast was recalculated from recent actuals.</p>
+              <div class="table-responsive" style="max-height:400px;overflow-y:auto;">
+                <table class="table table-sm table-hover sp-table mb-0">
+                  <thead class="sticky-top">
+                    <tr><th>Site</th><th>Category</th><th class="text-end">Old Forecast</th><th class="text-end">New Forecast</th><th class="text-center">Adj%</th><th>Based On</th></tr>
+                  </thead>
+                  <tbody>${updatedRows}</tbody>
+                </table>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="fcCreated">
+              <p class="text-muted small mb-2">New plans created for ${d.month} with auto-generated forecasts.</p>
+              <div class="table-responsive" style="max-height:400px;overflow-y:auto;">
+                <table class="table table-sm table-hover sp-table mb-0">
+                  <thead class="sticky-top">
+                    <tr><th>Site</th><th>Category</th><th class="text-end">Forecast</th><th class="text-center">Adj%</th><th>Based On</th></tr>
+                  </thead>
+                  <tbody>${createdRows}</tbody>
+                </table>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="fcSkipped">
+              <p class="text-muted small mb-2">These site+category combos were skipped — no actual sales data found in recent months.</p>
+              <div class="table-responsive" style="max-height:400px;overflow-y:auto;">
+                <table class="table table-sm table-hover sp-table mb-0">
+                  <thead class="sticky-top">
+                    <tr><th>Site</th><th>Category</th><th>Status</th><th>Reason</th></tr>
+                  </thead>
+                  <tbody>${skippedRows}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('forecastDiagModal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  new bootstrap.Modal(document.getElementById('forecastDiagModal')).show();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════════════════ */
+function fmtCrore(v) {
+  if (v >= 10000000) return '₹' + (v / 10000000).toFixed(1) + 'Cr';
+  if (v >= 100000)   return '₹' + (v / 100000).toFixed(1) + 'L';
+  if (v >= 1000)     return '₹' + (v / 1000).toFixed(1) + 'K';
+  return '₹' + (v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FORECAST SUGGESTION — fetches history for site+category
+   and pre-fills a weighted average suggestion
+════════════════════════════════════════════════════════════════ */
+let _suggestedForecastVal = null;
+let _suggestedAdjPct      = null;   // stores avgAdj * 100 for "Use this" to apply
+
+async function suggestForecast() {
+  const site     = document.getElementById('fSite').value;
+  const category = document.getElementById('fCategory').value;
+  const sugBox   = document.getElementById('forecastSuggestion');
+  const noHist   = document.getElementById('forecastNoHistory');
+
+  // Hide both until we have a result
+  sugBox.style.display = 'none';
+  noHist.style.display = 'none';
+  _suggestedForecastVal = null;
+  _suggestedAdjPct      = null;
+
+  if (!site || !category) return;
+
+  try {
+    // Fetch last 6 plans for this site+category, sorted desc
+    const { data } = await axios.get('/api/seasonal/', {
+      params: { site_id: site, category, sort: 'month', dir: 'desc', per_page: 6, page: 1 }
+    });
+
+    const plans = (data.data || []).filter(p => p.actual_sales > 0);
+
+    if (!plans.length) {
+      noHist.style.display = 'block';
+      noHist.innerHTML = `<i class="bi bi-info-circle me-1"></i>No actuals found for <strong>${category}</strong> at this site. Enter forecast manually.`;
+      return;
+    }
+
+    // Weighted average — most recent = highest weight
+    const recent = plans.slice(0, 3).reverse(); // oldest first
+    const weights = recent.map((_, i) => i + 1);
+    const weightedSum = recent.reduce((acc, p, i) => acc + p.actual_sales * weights[i], 0);
+    const weightTotal = weights.reduce((a, b) => a + b, 0);
+    const weightedAvg = weightedSum / weightTotal;
+
+    // Derive seasonal adjustment from historical variance (actual vs forecast ratio).
+    // This is more reliable than reading the stored seasonal_adjustments column,
+    // which may be 0 if plans were created without filling it in.
+    const plansWithForecast = recent.filter(p => p.forecasted_sales > 0);
+    let avgAdj = 0;
+    if (plansWithForecast.length) {
+      const adjSum = plansWithForecast.reduce((acc, p) => {
+        const ratio = (p.actual_sales - p.forecasted_sales) / p.forecasted_sales;
+        return acc + ratio;
+      }, 0);
+      avgAdj = adjSum / plansWithForecast.length;
+    }
+    // Round to 1 decimal % to avoid noise (e.g. 0.0381 → 3.8% → stored as 0.038)
+    avgAdj = Math.round(avgAdj * 1000) / 1000;
+
+    const suggested = Math.round(weightedAvg * (1 + avgAdj));
+    _suggestedForecastVal = suggested;
+    _suggestedAdjPct      = parseFloat((avgAdj * 100).toFixed(1));  // save for "Use this"
+
+    // Always fill adj field with variance-derived adjustment
+    const adjPctField = document.getElementById('fAdjPct');
+    adjPctField.value = _suggestedAdjPct;
+    syncAdjPresets(_suggestedAdjPct);
+    updatePreview();
+
+    // Build mini history table
+    const histRows = recent.reverse().map(p =>  // back to newest-first
+      `<span style="margin-right:12px;">
+        <span style="color:#64748b;">${p.month}:</span>
+        <strong>₹${p.actual_sales.toLocaleString(undefined,{maximumFractionDigits:0})}</strong>
+        ${p.variance_pct !== undefined ? `<span style="color:${p.variance_pct>=0?'#16a34a':'#dc2626'};margin-left:3px;">(${p.variance_pct>=0?'+':''}${p.variance_pct}%)</span>` : ''}
+      </span>`
+    ).join('');
+
+    document.getElementById('suggestedVal').textContent =
+      '₹' + suggested.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    document.getElementById('suggestedBasis').textContent =
+      `Weighted avg of last ${recent.length} month${recent.length > 1 ? 's' : ''} actuals` +
+      (_suggestedAdjPct !== 0 ? ` · ${_suggestedAdjPct > 0 ? '+' : ''}${_suggestedAdjPct}% avg variance adj` : '');
+    document.getElementById('historyMini').innerHTML =
+      `<div class="mb-1" style="color:#64748b;font-weight:600;">Recent actuals:</div>${histRows}`;
+
+    sugBox.style.display = 'block';
+
+  } catch(e) {
+    console.error('suggestForecast', e);
+  }
+}
+
+function applyForecastSuggestion() {
+  if (_suggestedForecastVal === null) return;
+
+  // Fill forecasted sales
+  document.getElementById('fForecasted').value = _suggestedForecastVal;
+
+  // Fill seasonal adjustment if suggestion available
+  if (_suggestedAdjPct !== null) {
+    const adjField = document.getElementById('fAdjPct');
+    adjField.value = _suggestedAdjPct;
+    syncAdjPresets(_suggestedAdjPct);
+    // Flash adj field green
+    adjField.style.transition = 'background .2s';
+    adjField.style.background = '#d1fae5';
+    setTimeout(() => { adjField.style.background = ''; }, 800);
+  }
+
+  updatePreview();
+
+  // Flash forecasted field green
+  const field = document.getElementById('fForecasted');
+  field.style.transition = 'background .2s';
+  field.style.background = '#d1fae5';
+  setTimeout(() => { field.style.background = ''; }, 800);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTO-FETCH ACTUAL SALES
+   Called whenever month / site / category changes.
+   If the selected month is in the past, queries the backend for
+   the real sales total from confirmed/delivered sales orders and
+   pre-fills the Actual Sales field automatically.
+════════════════════════════════════════════════════════════════ */
+let _lastFetchKey = '';   // debounce: skip if same combo re-triggers
+
+async function autoFetchActualSales(forceManual = false) {
+  const month    = document.getElementById('fMonth').value.trim();
+  const site     = document.getElementById('fSite').value;
+  const category = document.getElementById('fCategory').value;
+  const statusEl = document.getElementById('actualFetchStatus');
+  const badge    = document.getElementById('actualAutobadge');
+  const btn      = document.getElementById('btnFetchActual');
+
+  // Need all three fields
+  if (!month || !site || !category) {
+    statusEl.textContent = 'Only fill once the month has passed and real sales are known.';
+    statusEl.style.color = '';
+    badge.classList.add('d-none');
+    return;
+  }
+
+  // Validate month format Mon-YYYY
+  const monthRx = /^[A-Za-z]{3}-\d{4}$/;
+  if (!monthRx.test(month)) return;
+
+  // Check if month is in the past (client-side fast check)
+  const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const parts  = month.split('-');
+  const monIdx = MONTHS.indexOf(parts[0].toLowerCase());
+  const year   = parseInt(parts[1]);
+  if (monIdx === -1 || isNaN(year)) return;
+
+  const now          = new Date();
+  const planDate     = new Date(year, monIdx, 1);
+  const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  if (planDate >= currentMonth) {
+    // Future or current month — clear AUTO badge, show hint
+    statusEl.textContent = 'Only fill once the month has passed and real sales are known.';
+    statusEl.style.color = '';
+    badge.classList.add('d-none');
+    return;
+  }
+
+  // Avoid redundant fetches unless manually triggered
+  const fetchKey = `${month}|${site}|${category}`;
+  if (!forceManual && fetchKey === _lastFetchKey) return;
+  _lastFetchKey = fetchKey;
+
+  // Show loading state
+  statusEl.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i>Fetching actuals from sales orders…';
+  statusEl.style.color = '#2563eb';
+  if (btn) btn.disabled = true;
+
+  try {
+    const { data } = await axios.get('/api/seasonal/fetch-actuals', {
+      params: { month, site_id: site, category }
+    });
+
+    if (!data.success) throw new Error(data.message || 'Fetch failed');
+
+    if (!data.is_past) {
+      statusEl.textContent = 'Month is current or future — actuals not available yet.';
+      statusEl.style.color = '#d97706';
+      badge.classList.add('d-none');
+      return;
+    }
+
+    const total = data.total || 0;
+    document.getElementById('fActual').value = total.toFixed(2);
+    updatePreview();
+
+    badge.classList.remove('d-none');
+
+    if (total > 0) {
+      statusEl.innerHTML =
+        `<i class="bi bi-check-circle-fill me-1" style="color:#16a34a;"></i>` +
+        `Auto-filled from ${month} sales orders — ₹${total.toLocaleString(undefined,{maximumFractionDigits:0})}`;
+      statusEl.style.color = '#16a34a';
+      // Flash field green
+      const f = document.getElementById('fActual');
+      f.style.transition = 'background .2s';
+      f.style.background = '#d1fae5';
+      setTimeout(() => { f.style.background = ''; }, 900);
+    } else {
+      statusEl.innerHTML =
+        `<i class="bi bi-info-circle me-1" style="color:#d97706;"></i>` +
+        `No confirmed sales found for ${month} at this site/category. Enter manually if known.`;
+      statusEl.style.color = '#d97706';
+      badge.classList.add('d-none');
+    }
+
+  } catch (e) {
+    console.error('autoFetchActualSales', e);
+    statusEl.textContent = 'Could not fetch actuals — enter manually.';
+    statusEl.style.color = '#dc2626';
+    badge.classList.add('d-none');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function showToast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;
+    border-radius:10px;font-size:.875rem;font-weight:600;color:white;max-width:360px;
+    background:${type === 'error' ? '#dc2626' : '#16a34a'};
+    box-shadow:0 8px 24px rgba(0,0,0,.18);animation:slideIn .2s ease;`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+</script>
+
+<style>
+@keyframes slideIn { from { transform: translateY(16px); opacity:0; } to { transform:none; opacity:1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin .7s linear infinite; }
+</style>
+{% endblock %}

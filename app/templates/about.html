@@ -1,0 +1,415 @@
+{% extends 'public_base.html' %}
+{% block title %}About - InventoHub{% endblock %}
+
+{% block styles %}
+<style>
+    .about-hero {
+        position: relative; padding: 50px 0 100px; overflow: hidden;
+        background: linear-gradient(150deg, #0f172a 0%, #1e1b4b 35%, #172554 70%, #0c4a6e 100%);
+    }
+    .about-hero-shape {
+        position: absolute; border-radius: 50%; opacity: 1; pointer-events: none;
+    }
+    .about-hero-shape-1 { width: 550px; height: 550px; background: radial-gradient(circle, rgba(79,70,229,0.22), transparent 70%); top: -150px; right: -100px; }
+    .about-hero-shape-2 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(14,165,233,0.18), transparent 70%); bottom: -100px; left: -80px; }
+    .about-hero-shape-3 { width: 200px; height: 200px; background: radial-gradient(circle, rgba(52,211,153,0.12), transparent 70%); top: 30%; left: 20%; border-radius: 50%; transform: none; }
+
+    .story-section { padding: 50px 0; }
+    .story-image {
+        border-radius: var(--radius-xl); overflow: hidden;
+        box-shadow: var(--shadow-xl); position: relative;
+    }
+    .story-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .story-image-badge {
+        position: absolute; bottom: 24px; left: 24px;
+        background: var(--bg); border-radius: var(--radius);
+        padding: 16px 24px; box-shadow: var(--shadow-lg);
+        display: flex; align-items: center; gap: 14px;
+    }
+    .story-image-badge .badge-num { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1; }
+    .story-image-badge .badge-text { font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; line-height: 1.4; }
+
+    .mission-cards { padding: 50px 0; background: var(--bg-alt); }
+    .mission-card {
+        background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+        padding: 40px; height: 100%; transition: all 0.4s cubic-bezier(0.16,1,0.3,1); position: relative; overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .mission-card::before {
+        content:''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        border-radius: 4px 0 0 4px; transition: height 0.4s;
+    }
+    .mission-card:nth-child(1)::before { background: linear-gradient(to bottom, var(--primary), var(--sky)); }
+    .mission-card:nth-child(2)::before { background: linear-gradient(to bottom, var(--accent), var(--coral)); }
+    .mission-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-xl); border-color: rgba(79,70,229,0.3); }
+
+    .values-section { padding: 50px 0; }
+    .value-item {
+        display: flex; gap: 20px; padding: 28px; border-radius: var(--radius-lg);
+        transition: all 0.35s cubic-bezier(0.16,1,0.3,1); border: 1.5px solid transparent;
+    }
+    .value-item:hover { background: var(--bg); border-color: rgba(79,70,229,0.2); box-shadow: 0 4px 20px rgba(79,70,229,0.08); transform: translateX(8px); }
+    .value-item .value-num {
+        font-size: 0.75rem; font-weight: 800; color: var(--primary);
+        background: var(--primary-50); width: 36px; height: 36px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .value-item h5 { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+    .value-item p { font-size: 0.92rem; color: var(--text-secondary); line-height: 1.65; margin: 0; }
+
+    .team-section { padding: 50px 0; background: var(--bg-alt); }
+    .team-card {
+        text-align: center; background: var(--bg); border: 1.5px solid var(--border);
+        border-radius: var(--radius-lg); padding: 36px 24px; transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .team-card:hover { transform: translateY(-10px); box-shadow: var(--shadow-xl); border-color: rgba(79,70,229,0.25); }
+    .team-avatar {
+        width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
+        border: 3px solid var(--primary-100); margin-bottom: 20px;
+        transition: border-color 0.3s;
+    }
+    .team-card:hover .team-avatar { border-color: var(--primary); }
+    .team-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .team-role { font-size: 0.88rem; color: var(--primary); font-weight: 600; margin-bottom: 14px; }
+    .team-bio { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.65; margin-bottom: 18px; }
+    .team-socials a {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px; border-radius: 10px;
+        background: var(--bg-alt); color: var(--text-muted); text-decoration: none;
+        transition: all 0.3s; font-size: 0.95rem; margin: 0 4px;
+    }
+    .team-socials a:hover { background: var(--primary); color: #fff; transform: translateY(-2px); }
+
+    .about-cta { padding: 50px 0; background: linear-gradient(135deg, var(--primary-50), var(--sky-50)); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<section class="about-hero">
+    <div class="about-hero-shape about-hero-shape-1"></div>
+    <div class="about-hero-shape about-hero-shape-2"></div>
+    <div class="about-hero-shape about-hero-shape-3"></div>
+    <div class="container position-relative" style="z-index:2;">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <div class="section-label reveal" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.12);display:inline-flex;align-items:center;gap:8px;"><i class="bi bi-building"></i> About Us</div>
+                <h1 class="reveal reveal-d1" style="font-size:clamp(2.4rem,5vw,3.5rem);font-weight:800;line-height:1.1;color:#fff;margin:20px 0 20px;">We're Building the Future of <span style="background:linear-gradient(135deg,#818cf8,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Supply Chain Intelligence</span></h1>
+                <p class="reveal reveal-d2" style="max-width:580px;font-size:1.1rem;color:rgba(255,255,255,0.6);line-height:1.8;margin-bottom:36px;">Founded in 2021, InventoHub was born from a simple belief: inventory management shouldn't be complicated. Today, we power operations across 50+ warehouses with real-time intelligence.</p>
+                <div class="reveal reveal-d3" style="display:flex;gap:20px;flex-wrap:wrap;">
+                    <div style="padding:20px 28px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:16px;backdrop-filter:blur(10px);text-align:center;">
+                        <div style="font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,#818cf8,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">50+</div>
+                        <div style="font-size:0.82rem;color:rgba(255,255,255,0.55);font-weight:600;margin-top:4px;">Customers</div>
+                    </div>
+                    <div style="padding:20px 28px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:16px;backdrop-filter:blur(10px);text-align:center;">
+                        <div style="font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,#34d399,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">5+</div>
+                        <div style="font-size:0.82rem;color:rgba(255,255,255,0.55);font-weight:600;margin-top:4px;">Years Active</div>
+                    </div>
+                    <div style="padding:20px 28px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:16px;backdrop-filter:blur(10px);text-align:center;">
+                        <div style="font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,#fbbf24,#f87171);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">99.9%</div>
+                        <div style="font-size:0.82rem;color:rgba(255,255,255,0.55);font-weight:600;margin-top:4px;">Uptime</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5 reveal reveal-d4">
+                <div style="position:relative;">
+                    <div style="border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);">
+                        <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&q=80" alt="Warehouse operations" style="width:100%;height:320px;object-fit:cover;display:block;">
+                    </div>
+                    <div style="position:absolute;bottom:-20px;right:-20px;background:rgba(15,23,42,0.9);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:18px 24px;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+                        <div style="font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#818cf8,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;">50+</div>
+                        <div style="font-size:0.78rem;color:rgba(255,255,255,0.6);font-weight:600;margin-top:4px;">Active Warehouses</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Story -->
+<section class="story-section">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6 reveal">
+                <!-- Two stacked images -->
+                <div style="position:relative;">
+                    <div class="story-image" style="height:300px; margin-bottom:16px;">
+                        <img src="https://images.unsplash.com/photo-1553413077-190dd305871c?w=700&q=80" alt="Warehouse Management" style="width:100%;height:100%;object-fit:cover;">
+                        <div class="story-image-badge">
+                            <div class="badge-num">50+</div>
+                            <div class="badge-text">Active Warehouses<br>Under Management</div>
+                        </div>
+                    </div>
+                    <div class="story-image" style="height:200px;">
+                        <img src="https://images.unsplash.com/photo-1601598851547-4302969d0614?w=700&q=80" alt="Inventory tracking and logistics" style="width:100%;height:100%;object-fit:cover;">
+                    </div>
+                    
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="section-label reveal"><i class="bi bi-book"></i> Our Story</div>
+                <h2 class="section-title reveal reveal-d1">Built for Real Warehouses, <span class="gradient-text">Proven at Scale</span></h2>
+                <p class="reveal reveal-d2" style="color:var(--text-secondary); line-height:1.85; margin-bottom:20px;">
+                    InventoHub was born out of real frustration. Managing 50+ warehouses across multiple states meant juggling spreadsheets, disconnected systems, and constant manual errors — until we decided to build something smarter.
+                </p>
+                <p class="reveal reveal-d3" style="color:var(--text-secondary); line-height:1.85; margin-bottom:20px;">
+                    We created a unified platform that gives every warehouse manager real-time visibility into stock levels, automates procurement triggers, and syncs sales with inventory — instantly and accurately.
+                </p>
+                <p class="reveal reveal-d4" style="color:var(--text-secondary); line-height:1.85; margin-bottom:28px;">
+                    From a single admin console, our team oversees 50+ sites, tracks thousands of SKUs, and keeps operations running with zero manual entry required.
+                </p>
+                <div class="reveal" style="display:flex;gap:24px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:40px;height:40px;border-radius:10px;background:var(--primary-50);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:1.1rem;"><i class="bi bi-people-fill"></i></i></div>
+                        <div><div style="font-weight:800;font-size:1.1rem;color:var(--text);">50+</div><div style="font-size:0.78rem;color:var(--text-muted);">Customers</div></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:40px;height:40px;border-radius:10px;background:var(--sky-50);display:flex;align-items:center;justify-content:center;color:var(--sky);font-size:1.1rem;"><i class="bi bi-boxes"></i></div>
+                        <div><div style="font-weight:800;font-size:1.1rem;color:var(--text);">10,000+</div><div style="font-size:0.78rem;color:var(--text-muted);">SKUs Tracked</div></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:40px;height:40px;border-radius:10px;background:rgba(16,185,129,0.1);display:flex;align-items:center;justify-content:center;color:var(--emerald);font-size:1.1rem;"><i class="bi bi-graph-up-arrow"></i></div>
+                        <div><div style="font-weight:800;font-size:1.1rem;color:var(--text);">Real-Time</div><div style="font-size:0.78rem;color:var(--text-muted);">Stock Updates</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Mission & Vision -->
+<section class="mission-cards">
+    <div class="container">
+        <div class="text-center mb-5">
+            <div class="section-label reveal"><i class="bi bi-compass"></i> Purpose</div>
+            <h2 class="section-title reveal reveal-d1">Mission & Vision</h2>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 reveal">
+                <div class="mission-card">
+                    <div class="icon-box icon-box-primary" style="margin-bottom:24px;"><i class="bi bi-bullseye"></i></div>
+                    <h3 style="font-size:1.4rem; font-weight:800; margin-bottom:14px;">Our Mission</h3>
+                    <p style="color:var(--text-secondary); line-height:1.85; margin:0;">To democratize supply chain intelligence by providing affordable, powerful, and intuitive tools that help businesses of all sizes optimize their inventory operations and reduce waste.</p>
+                </div>
+            </div>
+            <div class="col-md-6 reveal reveal-d2">
+                <div class="mission-card">
+                    <div class="icon-box icon-box-warm" style="margin-bottom:24px;"><i class="bi bi-eye"></i></div>
+                    <h3 style="font-size:1.4rem; font-weight:800; margin-bottom:14px;">Our Vision</h3>
+                    <p style="color:var(--text-secondary); line-height:1.85; margin:0;">A world where no business suffers from stockouts, overstock, or supply chain blind spots — where every operation is powered by intelligent, self-learning systems that get better every day.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Values -->
+<section class="values-section">
+    <div class="container">
+        <div class="row g-5 align-items-start">
+            <div class="col-lg-5">
+                <div class="section-label reveal"><i class="bi bi-heart"></i> Values</div>
+                <h2 class="section-title reveal reveal-d1">What Drives<br><span class="gradient-text">Every Decision</span></h2>
+                <p class="section-subtitle reveal reveal-d2">Our core values aren't just words on a wall. They shape how we build products, hire people, and serve customers every single day.</p>
+            </div>
+            <div class="col-lg-7">
+                <div class="value-item reveal">
+                    <div class="value-num">01</div>
+                    <div><h5>Customer Obsession</h5><p>Every feature starts with a real customer problem. We don't build for ourselves — we build for the operations teams who depend on us daily.</p></div>
+                </div>
+                <div class="value-item reveal reveal-d1">
+                    <div class="value-num">02</div>
+                    <div><h5>Radical Transparency</h5><p>From our pricing to our roadmap to our incident reports, we believe trust is built through openness, not secrecy.</p></div>
+                </div>
+                <div class="value-item reveal reveal-d2">
+                    <div class="value-num">03</div>
+                    <div><h5>Engineering Excellence</h5><p>We hold ourselves to the highest standards of code quality, system reliability, and performance. Mediocrity has no place here.</p></div>
+                </div>
+                <div class="value-item reveal reveal-d3">
+                    <div class="value-num">04</div>
+                    <div><h5>Continuous Learning</h5><p>Technology evolves fast. Our team dedicates time every week to learning, experimenting, and pushing the boundaries of what's possible.</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Team -->
+<section class="team-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <div class="section-label reveal"><i class="bi bi-people"></i> Our Team</div>
+            <h2 class="section-title reveal reveal-d1">The People Running <span class="gradient-text">InventoHub</span></h2>
+            <p class="section-subtitle mx-auto reveal reveal-d2">Our administrators and warehouse managers driving intelligent operations every day.</p>
+        </div>
+
+        <!-- Admin Section -->
+        <div class="mb-4 reveal">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+                <div style="height:1px;background:var(--border);flex:1;"></div>
+                <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--primary);background:var(--primary-50);padding:6px 16px;border-radius:100px;border:1px solid rgba(79,70,229,0.15);">
+                    <i class="bi bi-shield-fill-check me-1"></i> System Administrator
+                </span>
+                <div style="height:1px;background:var(--border);flex:1;"></div>
+            </div>
+        </div>
+        <div id="admin-team-row" class="row g-4 justify-content-center mb-5">
+            <!-- Admins loaded dynamically -->
+            <div class="col-12 text-center text-muted py-3" id="admin-loading">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div> Loading...
+            </div>
+        </div>
+
+        <!-- Managers Section -->
+        <div class="mb-4 reveal">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+                <div style="height:1px;background:var(--border);flex:1;"></div>
+                <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--sky);background:var(--sky-50);padding:6px 16px;border-radius:100px;border:1px solid rgba(14,165,233,0.15);">
+                    <i class="bi bi-person-workspace me-1"></i> Warehouse Managers
+                </span>
+                <div style="height:1px;background:var(--border);flex:1;"></div>
+            </div>
+        </div>
+        <div id="manager-team-row" class="row g-4">
+            <!-- Managers loaded dynamically -->
+            <div class="col-12 text-center text-muted py-3" id="manager-loading">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div> Loading...
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="about-cta text-center">
+    <div class="container">
+        <h2 class="section-title reveal" style="max-width:600px; margin:0 auto 18px;">Want to Join Our <span class="gradient-text">Journey</span>?</h2>
+        <p class="section-subtitle mx-auto reveal reveal-d1" style="margin-bottom:36px;">We're always looking for talented people who share our passion for building the future of operations.</p>
+        <div class="reveal reveal-d2" style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+            <a href="/contact" class="btn-brand btn-lg">Get in Touch <i class="bi bi-arrow-right"></i></a>
+            <a href="#" class="btn-outline-brand btn-lg"><i class="bi bi-briefcase"></i> View Careers</a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+
+    try {
+        const res = await fetch('/api/users/public/team');
+        const json = await res.json();
+
+        console.log("FULL RESPONSE:", json);
+
+        if (!json.success) return;
+
+        const admins = json?.data?.admins ?? json?.admins ?? [];
+        const managers = json?.data?.managers ?? json?.managers ?? [];
+
+        console.log("ADMINS:", admins);
+        console.log("MANAGERS:", managers);
+
+        const adminRow = document.getElementById('admin-team-row');
+        const managerRow = document.getElementById('manager-team-row');
+
+        if (!adminRow || !managerRow) {
+            console.error("DOM elements not found!");
+            return;
+        }
+
+        // Safe avatar: if photo_url exists use it, otherwise generate initials avatar
+        function avatarSrc(member) {
+            if (member.photo_url && member.photo_url.trim() !== '') {
+                return member.photo_url;
+            }
+            return buildFallbackAvatar(member.username);
+        }
+
+        function buildFallbackAvatar(name) {
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=4f46e5&color=ffffff&bold=true&rounded=true`;
+        }
+
+        // Attach error handlers after rendering — avoids inline onerror string escaping issues
+        function attachAvatarErrorHandlers() {
+            document.querySelectorAll('.team-avatar[data-username]').forEach(img => {
+                img.onerror = function() {
+                    this.onerror = null;
+                    this.src = buildFallbackAvatar(this.dataset.username);
+                };
+            });
+        }
+
+        // ✅ Admin Card
+        function adminCard(m) {
+            return `
+            <div class="col-md-6 col-lg-4">
+                <div class="team-card" style="border:1.5px solid rgba(79,70,229,0.2);position:relative;overflow:visible;">
+                    <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--primary),var(--sky));color:#fff;font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;padding:4px 14px;border-radius:100px;">
+                        <i class="bi bi-shield-fill-check me-1"></i>Administrator
+                    </div>
+                    <img src="${avatarSrc(m)}" alt="${m.username}" class="team-avatar" data-username="${m.username}" style="border-color:var(--primary);margin-top:12px;">
+                    <div class="team-name">${m.username}</div>
+                    <div class="team-role" style="color:var(--primary);">System Administrator</div>
+                    <p class="team-bio">
+                        Oversees all warehouses, users, and platform configuration.
+                    </p>
+                </div>
+            </div>`;
+        }
+
+        // ✅ Manager Card
+        function managerCard(m, idx) {
+            const delays = ['','reveal-d1','reveal-d2','reveal-d3'];
+            const delay = delays[idx % 4];
+            const stateName = m.state_name || 'All States';
+
+            return `
+            <div class="col-md-6 col-lg-3">
+                <div class="team-card" style="border:1.5px solid rgba(14,165,233,0.15);">
+                    <img src="${avatarSrc(m)}" alt="${m.username}" class="team-avatar" data-username="${m.username}" style="border-color:var(--sky);">
+                    <div class="team-name">${m.username}</div>
+                    <div class="team-role" style="color:var(--sky);">Warehouse Manager</div>
+                    <p class="team-bio">
+                        Managing inventory operations for <strong>${stateName}</strong>.
+                    </p>
+                </div>
+            </div>`;
+        }
+
+        // ✅ Render Admins
+        adminRow.innerHTML = admins.length
+            ? admins.map(adminCard).join('')
+            : '<div class="col-12 text-center text-muted py-3">No administrators found.</div>';
+
+        // ✅ Render Managers
+        if (managers.length > 0) {
+            try {
+                managerRow.innerHTML = managers.map((m, i) => managerCard(m, i)).join('');
+            } catch (err) {
+                console.error('Manager render error:', err);
+                managerRow.innerHTML = '<div class="text-danger">Error loading managers</div>';
+            }
+        } else {
+            managerRow.innerHTML = '<div class="col-12 text-center text-muted py-3">No managers found.</div>';
+        }
+
+        // Attach safe error handlers after all cards are in the DOM
+        attachAvatarErrorHandlers();
+
+    } catch (e) {
+        console.error('Team load failed:', e);
+
+        const adminLoading = document.getElementById('admin-loading');
+        const managerLoading = document.getElementById('manager-loading');
+
+        if (adminLoading) adminLoading.textContent = 'Could not load team data.';
+        if (managerLoading) managerLoading.textContent = 'Could not load team data.';
+    }
+
+});
+</script>
+{% endblock %}
